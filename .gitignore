@@ -1,0 +1,55 @@
+# ==============================
+# Frontend
+# ==============================
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+frontend/.env.local
+frontend/.env.*.local
+
+# ==============================
+# Backend
+# ==============================
+backend/.venv/
+backend/venv/
+backend/__pycache__/
+backend/**/*.pyc
+backend/.pytest_cache/
+backend/.mypy_cache/
+backend/.ruff_cache/
+backend/.env
+
+# ==============================
+# Local AI models
+# ==============================
+models/
+*.gguf
+*.bin
+*.safetensors
+
+# ==============================
+# Runtime data
+# ==============================
+data/database/*.db
+data/database/*.sqlite
+data/recordings/*
+data/temp/*
+
+# Keep empty folders
+!data/recordings/.gitkeep
+!data/temp/.gitkeep
+
+# ==============================
+# Editor / OS
+# ==============================
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ==============================
+# Logs
+# ==============================
+*.log
+logs/
