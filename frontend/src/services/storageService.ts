@@ -51,4 +51,3 @@ export const saveConnection = (connection: ConnectionState) => {
 export const saveHistory = (history: PracticeRecord[]) => {
   write(HISTORY_KEY, history)
 }
-

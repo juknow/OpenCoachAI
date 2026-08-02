@@ -42,4 +42,3 @@ export interface CoachService {
   ): Promise<EvaluationResult>
   compare(input: ComparisonInput): Promise<ComparisonResult>
 }
-

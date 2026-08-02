@@ -5,4 +5,3 @@ export const createOpenAIService = (): CoachService => {
     'The OpenAI provider is intentionally disabled in this migration stage.',
   )
 }
-

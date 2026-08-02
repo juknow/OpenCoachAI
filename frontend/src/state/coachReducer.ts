@@ -154,4 +154,3 @@ export const coachReducer = (
       return state
   }
 }
-

@@ -100,4 +100,3 @@ export function RecorderPanel({ recorder, onSubmit }: RecorderPanelProps) {
     </section>
   )
 }
-

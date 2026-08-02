@@ -94,4 +94,3 @@ export function ProfileSetupPage({ initialProfile, onBack, onSave }: ProfileSetu
     </main>
   )
 }
-

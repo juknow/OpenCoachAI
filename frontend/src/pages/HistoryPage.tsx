@@ -44,4 +44,3 @@ export function HistoryPage({ history, onStart, onOpen, onDelete, onClear }: His
     </main>
   )
 }
-

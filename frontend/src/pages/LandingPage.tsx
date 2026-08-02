@@ -49,4 +49,3 @@ export function LandingPage({ onStart }: LandingPageProps) {
     </main>
   )
 }
-

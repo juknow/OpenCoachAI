@@ -46,4 +46,3 @@ export function PracticePage({ session, onBack, onSubmit }: PracticePageProps) {
     </main>
   )
 }
-

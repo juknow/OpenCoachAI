@@ -217,4 +217,3 @@ export const MOCK_FEEDBACK_TEMPLATES: Record<QuestionType, MockFeedbackTemplate>
     ],
   },
 }
-
