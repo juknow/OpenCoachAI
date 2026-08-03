@@ -57,6 +57,9 @@ export interface SpeechMetrics {
   silenceRatio: number
   energyVariation: number
   confidence: 'low' | 'medium'
+  analysisSucceeded?: boolean
+  peakRms?: number
+  voicedFrameRatio?: number
 }
 
 export interface RecordingArtifact {
@@ -151,12 +154,16 @@ export interface EvaluationResult {
   reusableStructure: string[]
   retryMission: string[]
   provider: CoachProvider
+  safetyNotice?: string
   metadata?: {
     requestId: string
     model: string
     inputTokens?: number
     outputTokens?: number
     cachedInputTokens?: number
+    cacheWriteTokens?: number
+    reasoningTokens?: number
+    totalTokens?: number
   }
 }
 

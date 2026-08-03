@@ -163,6 +163,9 @@ export interface EvaluationResponse {
       inputTokens: number
       outputTokens: number
       cachedInputTokens: number
+      cacheWriteTokens?: number
+      reasoningTokens?: number
+      totalTokens?: number
     } | null
   }
 }

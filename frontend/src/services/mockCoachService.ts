@@ -13,6 +13,7 @@ import type {
   TranscriptionInput,
 } from './coachService.ts'
 import {
+  countEnglishWords,
   countSentences,
   countWords,
   createTranscriptResult,
@@ -79,7 +80,7 @@ const buildImprovement = (
     variant,
     text,
     sentenceCount: countSentences(text),
-    wordCount: countWords(text),
+    wordCount: countEnglishWords(text),
   }
 }
 

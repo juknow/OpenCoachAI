@@ -86,7 +86,7 @@ export function FeedbackPage({ session, onHome, onRetry }: FeedbackPageProps) {
         <h1>{session.retryAttempt ? '재답변 비교 피드백' : '첫 번째 답변 피드백'}</h1>
         <p><span className={`type-badge ${meta.accent}`}>{meta.label}</span> {session.question.prompt}</p>
         <button className="button secondary" type="button" onClick={onHome}>연습 홈</button>
-        <div className="disclaimer">♢ 예상 등급은 AI 기반 연습용 추정치이며 공식 OPIc 성적이 아닙니다.</div>
+        <div className="disclaimer">{evaluation.safetyNotice ?? '♢ 예상 등급은 AI 기반 연습용 추정치이며 공식 OPIc 성적이 아닙니다.'}</div>
       </header>
 
       {session.comparison && session.retryAttempt && (

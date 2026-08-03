@@ -1,10 +1,14 @@
+import logging
 from types import SimpleNamespace
 
+import httpx
 import pytest
+from openai import RateLimitError
 
 from app.config import Settings
+from app.errors import ProviderResponseError
 from app.providers.openai_provider import OpenAIProvider
-from app.schemas.evaluation import EvaluationModelOutput
+from app.schemas.evaluation import CompactEvaluationOutput
 from tests.helpers import evaluation_output
 
 
@@ -14,22 +18,52 @@ class FakeTranscriptions:
 
     async def create(self, **kwargs):
         self.kwargs = kwargs
-        return SimpleNamespace(text="Um, unchanged text.")
+        return SimpleNamespace(
+            text="Um, unchanged text.",
+            usage=SimpleNamespace(
+                type="tokens",
+                input_tokens=7,
+                output_tokens=4,
+                total_tokens=11,
+            ),
+        )
 
 
 class FakeResponses:
     def __init__(self) -> None:
         self.kwargs = None
+        self.calls = 0
+        self.rate_limit_once = False
+        self.incomplete = False
 
     async def parse(self, **kwargs):
         self.kwargs = kwargs
+        self.calls += 1
+        if self.rate_limit_once and self.calls == 1:
+            request = httpx.Request("POST", "https://api.openai.com/v1/responses")
+            response = httpx.Response(429, request=request)
+            raise RateLimitError("rate limited", response=response, body=None)
+        if self.incomplete:
+            return SimpleNamespace(
+                status="incomplete",
+                incomplete_details=SimpleNamespace(reason="max_output_tokens"),
+                output_parsed=None,
+                model="gpt-5.6-luna",
+                usage=None,
+            )
         return SimpleNamespace(
+            status="completed",
             output_parsed=evaluation_output(),
             model="gpt-5.6-luna",
             usage=SimpleNamespace(
-                input_tokens=10,
-                output_tokens=20,
-                input_tokens_details=SimpleNamespace(cached_tokens=3),
+                input_tokens=100,
+                output_tokens=200,
+                total_tokens=300,
+                input_tokens_details=SimpleNamespace(
+                    cached_tokens=30,
+                    cache_write_tokens=12,
+                ),
+                output_tokens_details=SimpleNamespace(reasoning_tokens=5),
             ),
         )
 
@@ -41,7 +75,7 @@ class FakeClient:
 
 
 @pytest.mark.asyncio
-async def test_openai_provider_uses_required_models_and_parameters() -> None:
+async def test_openai_provider_uses_bounded_cost_parameters_and_usage() -> None:
     settings = Settings(_env_file=None, openai_api_key="not-real")
     client = FakeClient()
     provider = OpenAIProvider(settings, client=client)
@@ -53,17 +87,95 @@ async def test_openai_provider_uses_required_models_and_parameters() -> None:
         prompt="preserve",
     )
     assert transcription.text == "Um, unchanged text."
+    assert transcription.usage is not None
+    assert transcription.usage.total_tokens == 11
     assert client.audio.transcriptions.kwargs["model"] == "gpt-4o-mini-transcribe"
     assert "store" not in client.audio.transcriptions.kwargs
 
     result = await provider.evaluate(
         system_prompt="evaluate",
         user_payload={"transcript": "Um"},
-        response_model=EvaluationModelOutput,
+        response_model=CompactEvaluationOutput,
     )
     kwargs = client.responses.kwargs
     assert kwargs["model"] == "gpt-5.6-luna"
     assert kwargs["reasoning"] == {"effort": "none"}
     assert kwargs["store"] is False
-    assert kwargs["text_format"] is EvaluationModelOutput
-    assert result.usage.cached_input_tokens == 3
+    assert kwargs["verbosity"] == "low"
+    assert kwargs["max_output_tokens"] == 2_400
+    assert kwargs["text_format"] is CompactEvaluationOutput
+    assert result.usage is not None
+    assert result.usage.model_dump(by_alias=True) == {
+        "inputTokens": 100,
+        "outputTokens": 200,
+        "cachedInputTokens": 30,
+        "cacheWriteTokens": 12,
+        "reasoningTokens": 5,
+        "totalTokens": 300,
+    }
+
+
+@pytest.mark.asyncio
+async def test_rate_limit_is_retried_once_by_controlled_provider_policy() -> None:
+    settings = Settings(
+        _env_file=None,
+        openai_api_key="not-real",
+        openai_rate_limit_retry_delay_seconds=0,
+    )
+    client = FakeClient()
+    client.responses.rate_limit_once = True
+    provider = OpenAIProvider(settings, client=client)
+
+    await provider.evaluate(
+        system_prompt="evaluate",
+        user_payload={"transcript": "Um"},
+        response_model=CompactEvaluationOutput,
+    )
+
+    assert client.responses.calls == 2
+
+
+@pytest.mark.asyncio
+async def test_truncated_structured_output_is_rejected_without_retry() -> None:
+    settings = Settings(_env_file=None, openai_api_key="not-real")
+    client = FakeClient()
+    client.responses.incomplete = True
+    provider = OpenAIProvider(settings, client=client)
+
+    with pytest.raises(ProviderResponseError, match="EVALUATION_OUTPUT_TRUNCATED"):
+        await provider.evaluate(
+            system_prompt="evaluate",
+            user_payload={"transcript": "Um"},
+            response_model=CompactEvaluationOutput,
+        )
+
+    assert client.responses.calls == 1
+
+
+@pytest.mark.asyncio
+async def test_usage_log_never_contains_sensitive_payloads(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    settings = Settings(
+        _env_file=None,
+        openai_api_key="private-api-key-value",
+        app_environment="development",
+        openai_usage_log_enabled=True,
+    )
+    client = FakeClient()
+    provider = OpenAIProvider(settings, client=client)
+    secret_transcript = "private transcript content"
+
+    with caplog.at_level(logging.INFO, logger="opic.usage"):
+        await provider.evaluate(
+            system_prompt="private system prompt",
+            user_payload={"transcript": secret_transcript},
+            response_model=CompactEvaluationOutput,
+        )
+
+    log_text = caplog.text
+    assert "openai_usage" in log_text
+    assert secret_transcript not in log_text
+    assert "private system prompt" not in log_text
+    assert "private-api-key-value" not in log_text
+    assert "One of my favorite places" not in log_text

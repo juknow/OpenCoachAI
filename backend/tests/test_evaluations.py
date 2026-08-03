@@ -1,7 +1,24 @@
+import pytest
 from fastapi.testclient import TestClient
 
+from app.config import Settings
+from app.errors import ProviderResponseError
+from app.evaluation_cache import EvaluationCache
+from app.providers.base import ProviderEvaluation
+from app.schemas.common import UsageMetadata
+from app.schemas.evaluation import (
+    EvaluationModelOutput,
+    EvaluationRequest,
+    EvaluationResponse,
+)
+from app.services.evaluation_service import (
+    EvaluationService,
+    compact_to_public,
+    count_improvement_sentences,
+    count_improvement_words,
+)
 from tests.conftest import FakeProvider
-from tests.helpers import evaluation_request
+from tests.helpers import evaluation_output, evaluation_request
 
 
 def test_evaluation_returns_enriched_structured_result(
@@ -21,10 +38,25 @@ def test_evaluation_returns_enriched_structured_result(
         "inputTokens": 120,
         "outputTokens": 340,
         "cachedInputTokens": 20,
+        "cacheWriteTokens": 10,
+        "reasoningTokens": 0,
+        "totalTokens": 460,
     }
     call = fake_provider.evaluation_calls[0]
-    assert call["response_model"].__name__ == "EvaluationModelOutput"
+    assert call["response_model"].__name__ == "CompactEvaluationOutput"
     assert call["user_payload"]["transcript"].startswith("Um,")
+    assert set(call["user_payload"]["profile"]) == {"targetLevel", "currentLevel"}
+    assert "koreanTranslation" not in call["user_payload"]["question"]
+    assert evaluation["limitations"] == []
+    assert evaluation["conversationalDelivery"]["mainPoint"]["first20SecondsEstimate"].startswith(
+        "Um,"
+    )
+    base = evaluation["minimalCorrectionSentences"]
+    higher = evaluation["nextLevelSentences"]
+    assert count_improvement_sentences(base) == 10
+    assert 120 <= count_improvement_words(base) <= 160
+    assert count_improvement_sentences(higher) == 13
+    assert 140 <= count_improvement_words(higher) <= 180
 
 
 def test_evaluation_rejects_invalid_cardinality(client: TestClient) -> None:
@@ -46,3 +78,59 @@ def test_evaluation_rejects_invalid_cardinality(client: TestClient) -> None:
     response = client.post("/api/evaluations", json=request)
     assert response.status_code == 422
     assert response.json()["error"]["code"] == "INVALID_REQUEST"
+
+
+def test_identical_evaluation_is_reused_from_memory_cache(
+    client: TestClient, fake_provider: FakeProvider
+) -> None:
+    first = client.post("/api/evaluations", json=evaluation_request())
+    second = client.post("/api/evaluations", json=evaluation_request())
+
+    assert first.status_code == 200
+    assert second.status_code == 200
+    assert len(fake_provider.evaluation_calls) == 1
+    assert first.json()["evaluation"] == second.json()["evaluation"]
+    assert first.json()["metadata"]["requestId"] != second.json()["metadata"]["requestId"]
+
+
+def test_truncated_output_uses_specific_api_error_contract(
+    client: TestClient, fake_provider: FakeProvider
+) -> None:
+    fake_provider.evaluation_error = ProviderResponseError("EVALUATION_OUTPUT_TRUNCATED")
+
+    response = client.post("/api/evaluations", json=evaluation_request())
+
+    assert response.status_code == 502
+    assert response.json()["error"]["code"] == "AI_OUTPUT_TRUNCATED"
+    assert len(fake_provider.evaluation_calls) == 1
+
+
+@pytest.mark.asyncio
+async def test_v1_schema_fallback_preserves_public_evaluation_contract() -> None:
+    request = EvaluationRequest.model_validate(evaluation_request())
+    public_output = compact_to_public(evaluation_output(), request)
+
+    class V1Provider:
+        async def evaluate(self, **kwargs) -> ProviderEvaluation:
+            assert kwargs["response_model"] is EvaluationModelOutput
+            return ProviderEvaluation(
+                output=public_output,
+                model="gpt-5.6-luna",
+                usage=UsageMetadata(input_tokens=1, output_tokens=1, total_tokens=2),
+            )
+
+    service = EvaluationService(
+        V1Provider(),
+        "v1 prompt",
+        Settings(
+            _env_file=None,
+            openai_api_key="not-real",
+            evaluation_schema_version="v1",
+        ),
+        EvaluationCache[EvaluationResponse](ttl_seconds=0, max_entries=1),
+    )
+
+    response = await service.evaluate(request, "request-id")
+
+    assert response.evaluation.most_likely_level == public_output.most_likely_level
+    assert len(response.evaluation.minimal_correction_sentences) == 10

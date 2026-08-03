@@ -18,6 +18,18 @@ Set a newly issued `OPENAI_API_KEY` in `.env`, then run:
 uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
+To inspect token and latency metadata locally, set both of these values in
+`backend/.env`:
+
+```dotenv
+APP_ENVIRONMENT=development
+OPENAI_USAGE_LOG_ENABLED=true
+```
+
+Usage logs contain request type, model, token counts, latency, success, and retry
+count only. They never include audio, transcripts, prompts, evaluation text, or the
+API key. Detailed usage logging is forced off when `APP_ENVIRONMENT=production`.
+
 Tests mock the OpenAI provider and do not incur API charges:
 
 ```powershell

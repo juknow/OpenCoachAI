@@ -17,6 +17,7 @@ class FakeProvider:
     transcription_text: str = "Um, I I went there yesterday."
     transcription_calls: list[dict[str, object]] = field(default_factory=list)
     evaluation_calls: list[dict[str, object]] = field(default_factory=list)
+    evaluation_error: Exception | None = None
 
     async def transcribe(self, **kwargs) -> ProviderTranscription:
         self.transcription_calls.append(kwargs)
@@ -24,10 +25,19 @@ class FakeProvider:
 
     async def evaluate(self, **kwargs) -> ProviderEvaluation:
         self.evaluation_calls.append(kwargs)
+        if self.evaluation_error:
+            raise self.evaluation_error
         return ProviderEvaluation(
             output=evaluation_output(),
             model="gpt-5.6-luna",
-            usage=UsageMetadata(input_tokens=120, output_tokens=340, cached_input_tokens=20),
+            usage=UsageMetadata(
+                input_tokens=120,
+                output_tokens=340,
+                cached_input_tokens=20,
+                cache_write_tokens=10,
+                reasoning_tokens=0,
+                total_tokens=460,
+            ),
         )
 
 

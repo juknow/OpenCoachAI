@@ -43,11 +43,20 @@ def test_transcription_rejects_mismatched_signature(client: TestClient) -> None:
     assert response.json()["error"]["code"] == "INVALID_AUDIO_FILE"
 
 
-def test_transcription_rejects_short_duration(client: TestClient) -> None:
+def test_transcription_accepts_short_audible_duration(client: TestClient) -> None:
     response = client.post(
         "/api/transcriptions",
         files={"audio": ("answer.webm", WEBM, "audio/webm")},
         data={"durationSeconds": "3", "attemptNumber": "1"},
+    )
+    assert response.status_code == 200
+
+
+def test_transcription_rejects_zero_duration(client: TestClient) -> None:
+    response = client.post(
+        "/api/transcriptions",
+        files={"audio": ("answer.webm", WEBM, "audio/webm")},
+        data={"durationSeconds": "0", "attemptNumber": "1"},
     )
     assert response.status_code == 422
     assert response.json()["error"]["code"] == "INVALID_AUDIO_DURATION"

@@ -21,7 +21,8 @@ import type {
 } from './coachService.ts'
 import { requestApi } from './apiClient.ts'
 import {
-  countWords,
+  countEnglishWords,
+  countSentences,
   createTranscriptResult,
   toApiSpeechMetrics,
 } from './transcriptMetricsService.ts'
@@ -181,14 +182,14 @@ const mapEvaluation = (response: EvaluationResponse): EvaluationResult => {
     improvements: [
       {
         variant: 'core',
-        sentenceCount: value.minimalCorrectionSentences.length,
-        wordCount: countWords(value.minimalCorrectionSentences.join(' ')),
+        sentenceCount: countSentences(value.minimalCorrectionSentences.join(' ')),
+        wordCount: countEnglishWords(value.minimalCorrectionSentences.join(' ')),
         text: value.minimalCorrectionSentences.join(' '),
       },
       {
         variant: 'next',
-        sentenceCount: value.nextLevelSentences.length,
-        wordCount: countWords(value.nextLevelSentences.join(' ')),
+        sentenceCount: countSentences(value.nextLevelSentences.join(' ')),
+        wordCount: countEnglishWords(value.nextLevelSentences.join(' ')),
         text: value.nextLevelSentences.join(' '),
       },
     ],
@@ -197,12 +198,16 @@ const mapEvaluation = (response: EvaluationResponse): EvaluationResult => {
     ),
     retryMission: value.retryMission,
     provider: 'openai',
+    safetyNotice: value.safetyNoticeKorean,
     metadata: {
       requestId: response.metadata.requestId,
       model: response.metadata.model,
       inputTokens: usage?.inputTokens,
       outputTokens: usage?.outputTokens,
       cachedInputTokens: usage?.cachedInputTokens,
+      cacheWriteTokens: usage?.cacheWriteTokens,
+      reasoningTokens: usage?.reasoningTokens,
+      totalTokens: usage?.totalTokens,
     },
   }
 }

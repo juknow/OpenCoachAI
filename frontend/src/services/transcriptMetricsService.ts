@@ -11,6 +11,9 @@ const FUNCTIONAL_MARKERS = ['well', 'honestly', 'let me think', 'you know', 'i m
 export const countWords = (text: string) =>
   text.trim() ? text.trim().split(/\s+/).length : 0
 
+export const countEnglishWords = (text: string) =>
+  text.match(/[A-Za-z]+(?:['’-][A-Za-z]+)*/g)?.length ?? 0
+
 export const countSentences = (text: string) => {
   const matches = text.trim().match(/[^.!?]+[.!?]+|[^.!?]+$/g)
   return matches?.filter((sentence) => sentence.trim()).length ?? 0

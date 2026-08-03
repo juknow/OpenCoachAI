@@ -14,6 +14,7 @@ import { TranscriptReviewPage } from './pages/TranscriptReviewPage.tsx'
 import { checkBackendConnection } from './services/apiClient.ts'
 import { getCoachService } from './services/coachProvider.ts'
 import { compareAttempts } from './services/comparisonService.ts'
+import { runWithInFlightLock } from './services/inFlightLock.ts'
 import {
   loadStoredCoachState,
   saveConnection,
@@ -45,6 +46,8 @@ function App() {
     useState<ProcessingStage>('upload')
   const [operationError, setOperationError] = useState<string | null>(null)
   const connectionCheckId = useRef(0)
+  const transcriptionInFlight = useRef(false)
+  const evaluationInFlight = useRef(false)
 
   const refreshConnection = useCallback(async (preference: ConnectionState['preference']) => {
     const checkId = ++connectionCheckId.current
@@ -85,75 +88,81 @@ function App() {
   }
 
   const submitRecording = async (artifact: RecordingArtifact) => {
-    if (!state.session) return
-    const service = getCoachService(state.connection.provider)
-    setOperationError(null)
-    setProcessingStage('upload')
-    dispatch({ type: 'NAVIGATE', view: 'processing' })
-    try {
-      const transcript = await service.transcribe(
-        {
-          audio: artifact.blob,
-          question: state.session.question,
-          attempt: state.session.attempt,
-          metrics: artifact.metrics,
-        },
-        setProcessingStage,
-      )
-      dispatch({ type: 'SET_TRANSCRIPT', transcript })
-    } catch (error) {
-      setOperationError(
-        error instanceof Error
-          ? error.message
-          : '음성 전사에 실패했습니다. 녹음을 다시 제출해 주세요.',
-      )
-      dispatch({ type: 'NAVIGATE', view: 'practice' })
-    }
+    const session = state.session
+    if (!session) return
+    await runWithInFlightLock(transcriptionInFlight, async () => {
+      const service = getCoachService(state.connection.provider)
+      setOperationError(null)
+      setProcessingStage('upload')
+      dispatch({ type: 'NAVIGATE', view: 'processing' })
+      try {
+        const transcript = await service.transcribe(
+          {
+            audio: artifact.blob,
+            question: session.question,
+            attempt: session.attempt,
+            metrics: artifact.metrics,
+          },
+          setProcessingStage,
+        )
+        dispatch({ type: 'SET_TRANSCRIPT', transcript })
+      } catch (error) {
+        setOperationError(
+          error instanceof Error
+            ? error.message
+            : '음성 전사에 실패했습니다. 녹음을 다시 제출해 주세요.',
+        )
+        dispatch({ type: 'NAVIGATE', view: 'practice' })
+      }
+    })
   }
 
   const evaluateTranscript = async (transcript: TranscriptResult) => {
-    if (!state.session || !state.profile) return
-    const service = getCoachService(state.connection.provider)
-    setOperationError(null)
-    setProcessingStage('evaluate')
-    dispatch({ type: 'NAVIGATE', view: 'processing' })
-    try {
-      const evaluation = await service.evaluate(
-        {
-          question: state.session.question,
-          profile: state.profile,
-          transcript,
-          attempt: state.session.attempt,
-          previousAttempt:
-            state.session.attempt === 2 ? state.session.firstAttempt : undefined,
-        },
-        setProcessingStage,
-      )
-      const result: AttemptResult = {
-        attempt: state.session.attempt,
-        transcript,
-        evaluation,
-        completedAt: new Date().toISOString(),
-      }
-
-      if (state.session.attempt === 2 && state.session.firstAttempt) {
-        const comparison = compareAttempts(
-          state.session.firstAttempt,
-          result,
-          state.session.firstAttempt.evaluation.retryMission,
+    const session = state.session
+    const profile = state.profile
+    if (!session || !profile) return
+    await runWithInFlightLock(evaluationInFlight, async () => {
+      const service = getCoachService(state.connection.provider)
+      setOperationError(null)
+      setProcessingStage('evaluate')
+      dispatch({ type: 'NAVIGATE', view: 'processing' })
+      try {
+        const evaluation = await service.evaluate(
+          {
+            question: session.question,
+            profile,
+            transcript,
+            attempt: session.attempt,
+            previousAttempt: session.attempt === 2 ? session.firstAttempt : undefined,
+          },
+          setProcessingStage,
         )
-        dispatch({ type: 'COMPLETE_ATTEMPT', result, comparison })
-      } else {
-        dispatch({ type: 'COMPLETE_ATTEMPT', result })
+        const result: AttemptResult = {
+          attempt: session.attempt,
+          transcript,
+          evaluation,
+          completedAt: new Date().toISOString(),
+        }
+
+        if (session.attempt === 2 && session.firstAttempt) {
+          const comparison = compareAttempts(
+            session.firstAttempt,
+            result,
+            session.firstAttempt.evaluation.retryMission,
+          )
+          dispatch({ type: 'COMPLETE_ATTEMPT', result, comparison })
+        } else {
+          dispatch({ type: 'COMPLETE_ATTEMPT', result })
+        }
+      } catch (error) {
+        setOperationError(
+          error instanceof Error
+            ? error.message
+            : '평가 처리에 실패했습니다. 전사문을 확인하고 다시 시도해 주세요.',
+        )
+        dispatch({ type: 'SET_TRANSCRIPT', transcript })
       }
-    } catch (error) {
-      setOperationError(
-        error instanceof Error
-          ? error.message
-          : '평가 처리에 실패했습니다. 전사문을 확인하고 다시 시도해 주세요.',
-      )
-      dispatch({ type: 'SET_TRANSCRIPT', transcript })
-    }
+    })
   }
 
   const renderView = () => {

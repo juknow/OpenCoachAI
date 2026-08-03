@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import Field, field_validator
 
@@ -48,7 +48,7 @@ class AcousticMetrics(ApiModel):
 
 
 class SpeechMetrics(ApiModel):
-    duration_seconds: float = Field(ge=5, le=120.5)
+    duration_seconds: float = Field(gt=0, le=120.5)
     word_count: int = Field(ge=0)
     words_per_minute: int = Field(ge=0, le=500)
     filler_words: list[WordCount] = Field(max_length=12)
@@ -157,6 +157,90 @@ class Correction(ApiModel):
     original: str
     corrected: str
     explanation_korean: str
+
+
+ShortKorean = Annotated[str, Field(min_length=1, max_length=180)]
+SummaryKorean = Annotated[str, Field(min_length=1, max_length=260)]
+ShortEnglish = Annotated[str, Field(min_length=1, max_length=240)]
+TagText = Annotated[str, Field(min_length=1, max_length=80)]
+
+
+class CompactDimension(ApiModel):
+    score: int = Field(ge=0, le=4)
+    feedback: ShortKorean
+
+
+class CompactDimensions(ApiModel):
+    task: CompactDimension
+    content: CompactDimension
+    organization: CompactDimension
+    time_frames: CompactDimension
+    grammar: CompactDimension
+    vocabulary: CompactDimension
+    fluency: CompactDimension
+
+
+class CompactMainPoint(ApiModel):
+    status: Literal["clear_early", "late", "missing", "uncertain"]
+    feedback: ShortKorean
+
+
+class CompactMarkers(ApiModel):
+    functional: list[TagText] = Field(max_length=4)
+    disruptive: list[TagText] = Field(max_length=4)
+
+
+class CompactDelivery(ApiModel):
+    fluency: CompactDimension
+    accuracy: CompactDimension
+    naturalness: CompactDimension
+    main_point: CompactMainPoint
+    feelings: list[TagText] = Field(max_length=4)
+    markers: CompactMarkers
+
+
+class CompactPhrase(ApiModel):
+    context: Annotated[str, Field(min_length=1, max_length=100)]
+    phrase: Annotated[str, Field(min_length=1, max_length=120)]
+    usage: ShortKorean
+
+
+class CompactVocabulary(ApiModel):
+    category: Literal["topic", "feeling", "action", "connector"]
+    phrase: Annotated[str, Field(min_length=1, max_length=100)]
+    meaning: Annotated[str, Field(min_length=1, max_length=80)]
+    why: ShortKorean
+    example: ShortEnglish
+
+
+class CompactEvidence(ApiModel):
+    title: Annotated[str, Field(min_length=1, max_length=80)]
+    explanation: ShortKorean
+    evidence: Annotated[str, Field(min_length=1, max_length=180)]
+
+
+class CompactCorrection(ApiModel):
+    original: ShortEnglish
+    corrected: ShortEnglish
+    explanation: ShortKorean
+
+
+class CompactEvaluationOutput(ApiModel):
+    level: PracticeLevel
+    confidence: Confidence
+    confidence_why: ShortKorean
+    summary: SummaryKorean
+    dims: CompactDimensions
+    delivery: CompactDelivery
+    phrases: list[CompactPhrase] = Field(min_length=2, max_length=2)
+    vocab: list[CompactVocabulary] = Field(min_length=3, max_length=3)
+    strengths: list[CompactEvidence] = Field(max_length=3)
+    blocker: CompactEvidence
+    corrections: list[CompactCorrection] = Field(max_length=5)
+    missions: list[ShortKorean] = Field(min_length=3, max_length=3)
+    next_question_type: QuestionType
+    base_answer: list[ShortEnglish] = Field(min_length=10, max_length=12)
+    higher_answer: list[ShortEnglish] = Field(min_length=12, max_length=15)
 
 
 class EvaluationModelOutput(ApiModel):

@@ -1,4 +1,5 @@
 import type { RecorderController } from '../hooks/useRecorder.ts'
+import { isEffectivelySilent } from '../services/audioAnalysisService.ts'
 
 const formatTime = (seconds: number) => {
   const safeSeconds = Math.max(0, Math.floor(seconds))
@@ -12,10 +13,13 @@ interface RecorderPanelProps {
 }
 
 export function RecorderPanel({ recorder, onSubmit }: RecorderPanelProps) {
+  const effectivelySilent = recorder.artifact
+    ? isEffectivelySilent(recorder.artifact.metrics)
+    : false
   const canSubmit =
     recorder.phase === 'recorded' &&
     Boolean(recorder.artifact) &&
-    recorder.elapsedSeconds >= 5
+    !effectivelySilent
 
   return (
     <section className="answer-card">
@@ -49,7 +53,7 @@ export function RecorderPanel({ recorder, onSubmit }: RecorderPanelProps) {
               </select>
             </label>
             <strong>준비가 되면 녹음을 시작하세요</strong>
-            <small>최소 5초 · 최대 2분</small>
+            <small>짧은 답변도 가능 · 최대 2분</small>
             <div className="recording-time" aria-label={`녹음 시간 ${formatTime(recorder.elapsedSeconds)}`}>
               {formatTime(recorder.elapsedSeconds)}
             </div>
@@ -86,8 +90,8 @@ export function RecorderPanel({ recorder, onSubmit }: RecorderPanelProps) {
             {recorder.artifact && (
               <audio className="audio-preview" controls src={recorder.artifact.url} aria-label="녹음 미리 듣기" />
             )}
-            {recorder.elapsedSeconds < 5 && (
-              <p className="recorder-error">제출하려면 5초 이상 녹음해 주세요.</p>
+            {effectivelySilent && (
+              <p className="recorder-error">목소리가 감지되지 않았습니다. 마이크를 확인하고 다시 녹음해 주세요.</p>
             )}
             <button className="button secondary" type="button" onClick={recorder.reset}>↶ 다시 녹음</button>
           </>

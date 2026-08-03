@@ -47,9 +47,9 @@ class TranscriptionService:
         content_type: str | None,
         duration_seconds: float,
     ) -> ProviderTranscription:
-        if duration_seconds < 5 or duration_seconds > 120.5:
+        if duration_seconds <= 0 or duration_seconds > 120.5:
             raise ApiProblem(
-                "INVALID_AUDIO_DURATION", "녹음 길이는 5초 이상 120초 이하여야 합니다.", 422
+                "INVALID_AUDIO_DURATION", "녹음 길이는 0초보다 길고 120초 이하여야 합니다.", 422
             )
         if len(audio) < 512:
             raise ApiProblem("AUDIO_TOO_SMALL", "녹음 파일이 너무 작습니다.", 422)

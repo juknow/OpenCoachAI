@@ -8,7 +8,15 @@ const fallbackMetrics = (durationSeconds: number): SpeechMetrics => ({
   silenceRatio: 0,
   energyVariation: 0,
   confidence: 'low',
+  analysisSucceeded: false,
+  peakRms: 0,
+  voicedFrameRatio: 0,
 })
+
+export const isEffectivelySilent = (metrics: SpeechMetrics) =>
+  metrics.analysisSucceeded === true &&
+  (metrics.peakRms ?? 0) < 0.01 &&
+  (metrics.voicedFrameRatio ?? 0) < 1
 
 export const analyzeAudio = async (
   blob: Blob,
@@ -37,6 +45,7 @@ export const analyzeAudio = async (
     }
 
     const peak = Math.max(...rmsValues, 0)
+    const voicedFrames = rmsValues.filter((value) => value >= 0.01).length
     const silenceThreshold = Math.max(0.008, peak * 0.08)
     const silentFrames = rmsValues.map((value) => value < silenceThreshold)
     const firstSoundFrame = silentFrames.findIndex((silent) => !silent)
@@ -77,6 +86,11 @@ export const analyzeAudio = async (
       silenceRatio: Math.round((silentCount / Math.max(1, silentFrames.length)) * 100),
       energyVariation: Math.round(Math.min(100, Math.sqrt(variance) * 1400)),
       confidence: peak > 0.02 ? 'medium' : 'low',
+      analysisSucceeded: true,
+      peakRms: Number(peak.toFixed(4)),
+      voicedFrameRatio: Number(
+        ((voicedFrames / Math.max(1, rmsValues.length)) * 100).toFixed(1),
+      ),
     }
   } catch {
     return fallbackMetrics(measuredDurationSeconds)

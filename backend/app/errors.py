@@ -94,6 +94,13 @@ def register_error_handlers(app: FastAPI) -> None:
                 "OPENAI_NOT_CONFIGURED",
                 "서버에 OpenAI API가 설정되지 않아 Demo Mode를 사용해야 합니다.",
             )
+        if str(error) == "EVALUATION_OUTPUT_TRUNCATED":
+            return error_response(
+                request,
+                502,
+                "AI_OUTPUT_TRUNCATED",
+                "AI 평가 응답이 출력 한도에 도달했습니다. 부분 결과는 저장되지 않았습니다.",
+            )
         return error_response(
             request,
             502,

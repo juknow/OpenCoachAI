@@ -12,6 +12,7 @@ OutputModel = TypeVar("OutputModel", bound=BaseModel)
 class ProviderTranscription:
     text: str
     model: str
+    usage: UsageMetadata | None = None
 
 
 @dataclass(frozen=True)
