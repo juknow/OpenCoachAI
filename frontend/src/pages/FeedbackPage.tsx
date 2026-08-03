@@ -9,6 +9,9 @@ import type {
 
 interface FeedbackPageProps {
   session: ActiveSession
+  higherAnswerStatus: 'idle' | 'loading' | 'success' | 'error'
+  higherAnswerError?: string
+  onGenerateHigher: () => void
   onHome: () => void
   onRetry: () => void
 }
@@ -70,7 +73,14 @@ function ImprovementCard({
   )
 }
 
-export function FeedbackPage({ session, onHome, onRetry }: FeedbackPageProps) {
+export function FeedbackPage({
+  session,
+  higherAnswerStatus,
+  higherAnswerError,
+  onGenerateHigher,
+  onHome,
+  onRetry,
+}: FeedbackPageProps) {
   const speech = useSpeechSynthesis()
   const result = session.retryAttempt ?? session.firstAttempt
   if (!result || !session.firstAttempt) return null
@@ -78,6 +88,8 @@ export function FeedbackPage({ session, onHome, onRetry }: FeedbackPageProps) {
   const evaluation = result.evaluation
   const transcript = result.transcript
   const meta = QUESTION_TYPE_META[session.question.type]
+  const coreAnswer = evaluation.improvements.find((answer) => answer.variant === 'core')
+  const higherAnswer = evaluation.improvements.find((answer) => answer.variant === 'next')
 
   return (
     <main className="feedback-page page-shell">
@@ -145,7 +157,35 @@ export function FeedbackPage({ session, onHome, onRetry }: FeedbackPageProps) {
 
           <section className="feedback-section">
             <h2>답변 개선 버전</h2>
-            <div className="improvement-list">{evaluation.improvements.map((answer) => <ImprovementCard key={answer.variant} answer={answer} onSpeak={speech.speak} />)}</div>
+            <div className="improvement-list">
+              {coreAnswer && <ImprovementCard answer={coreAnswer} onSpeak={speech.speak} />}
+              {higherAnswer ? (
+                <ImprovementCard answer={higherAnswer} onSpeak={speech.speak} />
+              ) : (
+                <article className="improvement-card lazy-improvement" aria-live="polite">
+                  <span className="answer-label next">NEXT · ON DEMAND</span>
+                  <h3>상위 레벨 답변은 필요할 때 생성합니다</h3>
+                  <p>현재 전사문과 기본 개선 답변을 바탕으로 12~15문장의 자연스러운 상위 답변을 만듭니다.</p>
+                  {higherAnswerStatus === 'error' && (
+                    <p className="lazy-improvement-error" role="alert">
+                      {higherAnswerError ?? '상위 레벨 답변 생성에 실패했습니다.'}
+                    </p>
+                  )}
+                  <button
+                    className="button secondary"
+                    type="button"
+                    onClick={onGenerateHigher}
+                    disabled={higherAnswerStatus === 'loading'}
+                  >
+                    {higherAnswerStatus === 'loading'
+                      ? '상위 답변 생성 중…'
+                      : higherAnswerStatus === 'error'
+                        ? '다시 생성하기'
+                        : '상위 레벨 답변 생성'}
+                  </button>
+                </article>
+              )}
+            </div>
             <p className="section-note">기본 개선 답변은 10~12문장, 상위 답변은 12~15문장으로 구성하며 실제 문장 수와 단어 수를 계산해 표시합니다.</p>
           </section>
         </div>

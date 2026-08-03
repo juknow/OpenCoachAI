@@ -19,6 +19,11 @@ export const countSentences = (text: string) => {
   return matches?.filter((sentence) => sentence.trim()).length ?? 0
 }
 
+export const splitSentences = (text: string) =>
+  (text.trim().match(/[^.!?]+[.!?]+|[^.!?]+$/g) ?? [])
+    .map((sentence) => sentence.trim())
+    .filter(Boolean)
+
 export const countFillers = (text: string) => text.match(FILLER_PATTERN)?.length ?? 0
 
 export const countRepeatedWords = (text: string) => {

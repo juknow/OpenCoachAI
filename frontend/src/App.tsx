@@ -35,6 +35,12 @@ import type {
 const createSessionId = () =>
   window.crypto.randomUUID?.() ?? `practice-${Date.now()}`
 
+interface HigherAnswerState {
+  key: string
+  status: 'idle' | 'loading' | 'success' | 'error'
+  error?: string
+}
+
 function App() {
   const [state, dispatch] = useReducer(
     coachReducer,
@@ -45,9 +51,14 @@ function App() {
   const [processingStage, setProcessingStage] =
     useState<ProcessingStage>('upload')
   const [operationError, setOperationError] = useState<string | null>(null)
+  const [higherAnswerState, setHigherAnswerState] = useState<HigherAnswerState>({
+    key: '',
+    status: 'idle',
+  })
   const connectionCheckId = useRef(0)
   const transcriptionInFlight = useRef(false)
   const evaluationInFlight = useRef(false)
+  const higherAnswerInFlight = useRef(false)
 
   const refreshConnection = useCallback(async (preference: ConnectionState['preference']) => {
     const checkId = ++connectionCheckId.current
@@ -165,6 +176,44 @@ function App() {
     })
   }
 
+  const generateHigherAnswer = async () => {
+    const session = state.session
+    const result = session?.retryAttempt ?? session?.firstAttempt
+    const profile = session?.profileSnapshot ?? state.profile
+    if (!session || !result || !profile) return
+    if (result.evaluation.improvements.some((answer) => answer.variant === 'next')) return
+
+    const key = `${session.id}:${result.attempt}`
+    await runWithInFlightLock(higherAnswerInFlight, async () => {
+      setHigherAnswerState({ key, status: 'loading' })
+      try {
+        const answer = await getCoachService(
+          state.connection.provider,
+        ).generateHigherAnswer({
+          question: session.question,
+          profile,
+          transcript: result.transcript,
+          evaluation: result.evaluation,
+        })
+        dispatch({
+          type: 'SET_HIGHER_IMPROVEMENT',
+          attempt: result.attempt,
+          answer,
+        })
+        setHigherAnswerState({ key, status: 'success' })
+      } catch (error) {
+        setHigherAnswerState({
+          key,
+          status: 'error',
+          error:
+            error instanceof Error
+              ? error.message
+              : '상위 레벨 답변 생성에 실패했습니다. 다시 시도해 주세요.',
+        })
+      }
+    })
+  }
+
   const renderView = () => {
     switch (state.view) {
       case 'landing':
@@ -231,13 +280,25 @@ function App() {
           />
         ) : null
       case 'feedback':
-        return state.session ? (
-          <FeedbackPage
-            session={state.session}
-            onHome={goHome}
-            onRetry={() => dispatch({ type: 'START_RETRY' })}
-          />
-        ) : null
+        if (!state.session) return null
+        {
+          const result = state.session.retryAttempt ?? state.session.firstAttempt
+          const key = result ? `${state.session.id}:${result.attempt}` : ''
+          return (
+            <FeedbackPage
+              session={state.session}
+              higherAnswerStatus={
+                higherAnswerState.key === key ? higherAnswerState.status : 'idle'
+              }
+              higherAnswerError={
+                higherAnswerState.key === key ? higherAnswerState.error : undefined
+              }
+              onGenerateHigher={() => void generateHigherAnswer()}
+              onHome={goHome}
+              onRetry={() => dispatch({ type: 'START_RETRY' })}
+            />
+          )
+        }
       case 'history':
         return (
           <HistoryPage

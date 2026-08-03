@@ -81,6 +81,7 @@ const buildImprovement = (
     text,
     sentenceCount: countSentences(text),
     wordCount: countEnglishWords(text),
+    sentences: sentences.map((sentence) => interpolate(sentence, topic)),
   }
 }
 
@@ -152,13 +153,6 @@ export const mockCoachService: CoachService = {
         { title: '주제 응답', detail: '질문과 관련된 중심 소재를 제시했습니다.', evidence: input.transcript.editedText.split(/[.!?]/)[0]?.trim() || '응답 시작' },
         { title: '의사소통 시도', detail: '완벽하지 않아도 답변을 이어 가려는 흐름이 있습니다.', evidence: input.transcript.editedText.split(/[.!?]/)[1]?.trim() || '답변을 계속 이어 감' },
       ],
-      limitations: [
-        {
-          title: template.blocker.title,
-          detail: template.blocker.detail,
-          evidence: input.transcript.editedText.slice(0, 150),
-        },
-      ],
       blocker: {
         ...template.blocker,
         evidence: input.transcript.editedText.slice(0, 150),
@@ -169,11 +163,16 @@ export const mockCoachService: CoachService = {
       ],
       improvements: [
         buildImprovement(template.coreSentences, topic, 'core'),
-        buildImprovement(template.nextSentences, topic, 'next'),
       ],
       reusableStructure: template.reusableStructure,
       retryMission: template.retryMission,
       provider: 'mock',
     }
+  },
+
+  async generateHigherAnswer(input) {
+    await wait(650)
+    const template = MOCK_FEEDBACK_TEMPLATES[input.question.type]
+    return buildImprovement(template.nextSentences, input.question.topic, 'next')
   },
 }

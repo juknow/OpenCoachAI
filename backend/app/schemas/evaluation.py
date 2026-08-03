@@ -225,7 +225,7 @@ class CompactCorrection(ApiModel):
     explanation: ShortKorean
 
 
-class CompactEvaluationOutput(ApiModel):
+class CompactEvaluationCore(ApiModel):
     level: PracticeLevel
     confidence: Confidence
     confidence_why: ShortKorean
@@ -238,9 +238,20 @@ class CompactEvaluationOutput(ApiModel):
     blocker: CompactEvidence
     corrections: list[CompactCorrection] = Field(max_length=5)
     missions: list[ShortKorean] = Field(min_length=3, max_length=3)
+
+
+class CompactEvaluationV2Output(CompactEvaluationCore):
+    base_answer: list[ShortEnglish] = Field(min_length=10, max_length=12)
+
+
+class CompactEvaluationOutput(CompactEvaluationCore):
     next_question_type: QuestionType
     base_answer: list[ShortEnglish] = Field(min_length=10, max_length=12)
     higher_answer: list[ShortEnglish] = Field(min_length=12, max_length=15)
+
+
+class CompactHigherAnswerOutput(ApiModel):
+    sentences: list[ShortEnglish] = Field(min_length=12, max_length=15)
 
 
 class EvaluationModelOutput(ApiModel):
@@ -281,4 +292,83 @@ class EvaluationResult(EvaluationModelOutput):
 
 class EvaluationResponse(ApiModel):
     evaluation: EvaluationResult
+    metadata: ResponseMetadata
+
+
+class EvaluationV2MainPoint(ApiModel):
+    status: Literal["clear_early", "late", "missing", "uncertain"]
+    feedback_korean: str = Field(min_length=1, max_length=500)
+
+
+class EvaluationV2Delivery(ApiModel):
+    fluency: DimensionEvaluation
+    accuracy: DimensionEvaluation
+    naturalness: DimensionEvaluation
+    main_point: EvaluationV2MainPoint
+    feeling_expressions: list[str] = Field(max_length=4)
+    functional_markers: list[str] = Field(max_length=4)
+    disruptive_markers: list[str] = Field(max_length=4)
+
+
+class ImprovementAnswerResult(ApiModel):
+    variant: Literal["core", "next"]
+    sentences: list[ShortEnglish] = Field(min_length=10, max_length=15)
+    sentence_count: int = Field(ge=10, le=15)
+    word_count: int = Field(ge=1)
+
+
+class EvaluationV2Result(ApiModel):
+    most_likely_level: PracticeLevel
+    estimated_range: EstimatedRange
+    confidence: Confidence
+    confidence_reason: str
+    summary_korean: str
+    dimensions: DimensionEvaluations
+    conversational_delivery: EvaluationV2Delivery
+    natural_phrase_suggestions: list[NaturalPhraseSuggestion] = Field(
+        min_length=2, max_length=2
+    )
+    recommended_vocabulary: list[RecommendedVocabulary] = Field(min_length=3, max_length=3)
+    strengths: list[Evidence] = Field(max_length=3)
+    primary_level_blocker: Evidence
+    corrections: list[Correction] = Field(max_length=5)
+    retry_mission: list[str] = Field(min_length=3, max_length=3)
+    base_answer: ImprovementAnswerResult
+    reusable_structure: list[ReusableStructureStep]
+    safety_notice_korean: str
+
+
+class EvaluationV2Response(ApiModel):
+    evaluation: EvaluationV2Result
+    metadata: ResponseMetadata
+
+
+class HigherAnswerProfile(ApiModel):
+    target_level: Literal["IM2", "IM3", "IH", "AL"]
+    current_level: Literal["unknown", "IM1", "IM2", "IM3", "IH"]
+
+
+class HigherAnswerQuestion(ApiModel):
+    type: QuestionType
+    topic: str = Field(min_length=1, max_length=200)
+    question: str = Field(min_length=1, max_length=2_000)
+
+
+class HigherAnswerRequest(ApiModel):
+    profile: HigherAnswerProfile
+    question: HigherAnswerQuestion
+    transcript: str = Field(min_length=1, max_length=12_000)
+    most_likely_level: PracticeLevel
+    base_answer: list[ShortEnglish] = Field(min_length=10, max_length=12)
+
+    @field_validator("transcript")
+    @classmethod
+    def higher_transcript_must_contain_speech(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("transcript must not be blank")
+        return value
+
+
+class HigherAnswerResponse(ApiModel):
+    answer: ImprovementAnswerResult
     metadata: ResponseMetadata

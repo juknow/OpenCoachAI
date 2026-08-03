@@ -5,6 +5,7 @@ import type {
   CoachState,
   ComparisonResult,
   ConnectionState,
+  ImprovementAnswer,
   PracticeProfile,
   PracticeRecord,
   Question,
@@ -19,6 +20,7 @@ export type CoachAction =
   | { type: 'START_SESSION'; id: string; question: Question }
   | { type: 'SET_TRANSCRIPT'; transcript: TranscriptResult }
   | { type: 'COMPLETE_ATTEMPT'; result: AttemptResult; comparison?: ComparisonResult }
+  | { type: 'SET_HIGHER_IMPROVEMENT'; attempt: 1 | 2; answer: ImprovementAnswer }
   | { type: 'START_RETRY' }
   | { type: 'OPEN_RECORD'; record: PracticeRecord }
   | { type: 'DELETE_RECORD'; id: string }
@@ -36,6 +38,23 @@ const updateSession = (
   session: ActiveSession | null,
   update: Partial<ActiveSession>,
 ) => (session ? { ...session, ...update } : session)
+
+const withHigherImprovement = (
+  attempt: AttemptResult | undefined,
+  answer: ImprovementAnswer,
+) =>
+  attempt
+    ? {
+        ...attempt,
+        evaluation: {
+          ...attempt.evaluation,
+          improvements: [
+            ...attempt.evaluation.improvements.filter((item) => item.variant !== 'next'),
+            answer,
+          ],
+        },
+      }
+    : attempt
 
 export const coachReducer = (
   state: CoachState,
@@ -62,6 +81,7 @@ export const coachReducer = (
         session: {
           id: action.id,
           question: action.question,
+          profileSnapshot: state.profile ?? undefined,
           attempt: 1,
         },
       }
@@ -122,6 +142,41 @@ export const coachReducer = (
           comparison: undefined,
         },
       }
+    case 'SET_HIGHER_IMPROVEMENT': {
+      if (!state.session) return state
+      const firstAttempt =
+        action.attempt === 1
+          ? withHigherImprovement(state.session.firstAttempt, action.answer)
+          : state.session.firstAttempt
+      const retryAttempt =
+        action.attempt === 2
+          ? withHigherImprovement(state.session.retryAttempt, action.answer)
+          : state.session.retryAttempt
+      return {
+        ...state,
+        session: {
+          ...state.session,
+          firstAttempt,
+          retryAttempt,
+        },
+        history: state.history.map((record) =>
+          record.id === state.session?.id
+            ? {
+                ...record,
+                firstAttempt:
+                  action.attempt === 1
+                    ? (withHigherImprovement(record.firstAttempt, action.answer) ??
+                      record.firstAttempt)
+                    : record.firstAttempt,
+                retryAttempt:
+                  action.attempt === 2
+                    ? withHigherImprovement(record.retryAttempt, action.answer)
+                    : record.retryAttempt,
+              }
+            : record,
+        ),
+      }
+    }
     case 'OPEN_RECORD':
       return {
         ...state,
@@ -129,6 +184,7 @@ export const coachReducer = (
         session: {
           id: action.record.id,
           question: action.record.question,
+          profileSnapshot: action.record.profileSnapshot,
           attempt: action.record.retryAttempt ? 2 : 1,
           transcript:
             action.record.retryAttempt?.transcript ?? action.record.firstAttempt.transcript,

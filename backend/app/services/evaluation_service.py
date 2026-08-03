@@ -4,7 +4,7 @@ import re
 
 from app.config import Settings
 from app.errors import ProviderResponseError
-from app.evaluation_cache import EvaluationCache
+from app.evaluation_cache import ResultCache
 from app.evaluation_defaults import SAFETY_NOTICE, estimated_range_for, reusable_structure_for
 from app.providers.base import AiProvider
 from app.schemas.common import ResponseMetadata
@@ -141,7 +141,7 @@ class EvaluationService:
         provider: AiProvider,
         prompt: str,
         settings: Settings,
-        cache: EvaluationCache[EvaluationResponse],
+        cache: ResultCache[EvaluationResponse],
     ) -> None:
         self._provider = provider
         self._prompt = prompt
@@ -183,6 +183,8 @@ class EvaluationService:
             system_prompt=self._prompt,
             user_payload=self._ai_payload(request),
             response_model=response_model,
+            request_type="evaluation_legacy",
+            prompt_cache_key=self._prompt_cache_key(),
         )
 
         try:
@@ -237,6 +239,13 @@ class EvaluationService:
             sort_keys=True,
         )
         return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+    def _prompt_cache_key(self) -> str:
+        return (
+            f"opic:evaluation-legacy:{self._settings.openai_evaluation_model}:"
+            f"{self._settings.evaluation_prompt_version}:"
+            f"{self._settings.evaluation_schema_version}"
+        )
 
     @staticmethod
     def _ai_payload(request: EvaluationRequest) -> dict[str, object]:

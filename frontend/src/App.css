@@ -908,6 +908,11 @@
 .answer-label { color: #2454b7; font-size: 11px; font-weight: 900; letter-spacing: 0.06em; }
 .answer-label.next { color: #7748c9; }
 .improvement-card > p { margin: 0; color: #344158; font-size: 15px; line-height: 1.8; }
+.lazy-improvement { border-style: dashed; background: linear-gradient(145deg, #fbfcff, #f7f4ff); }
+.lazy-improvement h3 { margin: 14px 0 8px; font-size: 18px; }
+.lazy-improvement > p { color: var(--muted); font-size: 14px; }
+.lazy-improvement .button { margin-top: 18px; }
+.lazy-improvement .lazy-improvement-error { margin-top: 14px; color: var(--danger); }
 
 .feedback-aside > section { padding: 24px; }
 .feedback-aside h2 { font-size: 20px; }

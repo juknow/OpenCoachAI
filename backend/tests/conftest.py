@@ -9,7 +9,8 @@ from app.config import Settings, get_settings
 from app.main import create_app
 from app.providers.base import ProviderEvaluation, ProviderTranscription
 from app.schemas.common import UsageMetadata
-from tests.helpers import evaluation_output
+from app.schemas.evaluation import CompactEvaluationV2Output, CompactHigherAnswerOutput
+from tests.helpers import evaluation_output, evaluation_v2_output, higher_answer_output
 
 
 @dataclass
@@ -27,8 +28,15 @@ class FakeProvider:
         self.evaluation_calls.append(kwargs)
         if self.evaluation_error:
             raise self.evaluation_error
+        response_model = kwargs["response_model"]
+        if response_model is CompactEvaluationV2Output:
+            output = evaluation_v2_output()
+        elif response_model is CompactHigherAnswerOutput:
+            output = higher_answer_output()
+        else:
+            output = evaluation_output()
         return ProviderEvaluation(
-            output=evaluation_output(),
+            output=output,
             model="gpt-5.6-luna",
             usage=UsageMetadata(
                 input_tokens=120,

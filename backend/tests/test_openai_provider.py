@@ -96,6 +96,7 @@ async def test_openai_provider_uses_bounded_cost_parameters_and_usage() -> None:
         system_prompt="evaluate",
         user_payload={"transcript": "Um"},
         response_model=CompactEvaluationOutput,
+        prompt_cache_key="opic:evaluation-v2:gpt-5.6-luna:v1:v1",
     )
     kwargs = client.responses.kwargs
     assert kwargs["model"] == "gpt-5.6-luna"
@@ -104,6 +105,16 @@ async def test_openai_provider_uses_bounded_cost_parameters_and_usage() -> None:
     assert kwargs["verbosity"] == "low"
     assert kwargs["max_output_tokens"] == 2_400
     assert kwargs["text_format"] is CompactEvaluationOutput
+    assert kwargs["prompt_cache_key"] == "opic:evaluation-v2:gpt-5.6-luna:v1:v1"
+    assert kwargs["prompt_cache_options"] == {"mode": "explicit", "ttl": "30m"}
+    assert kwargs["input"][0]["content"] == [
+        {
+            "type": "input_text",
+            "text": "evaluate",
+            "prompt_cache_breakpoint": {"mode": "explicit"},
+        }
+    ]
+    assert kwargs["input"][1]["content"] == '{"transcript":"Um"}'
     assert result.usage is not None
     assert result.usage.model_dump(by_alias=True) == {
         "inputTokens": 100,
@@ -113,6 +124,29 @@ async def test_openai_provider_uses_bounded_cost_parameters_and_usage() -> None:
         "reasoningTokens": 5,
         "totalTokens": 300,
     }
+
+
+@pytest.mark.asyncio
+async def test_prompt_cache_can_be_disabled_without_changing_payload_order() -> None:
+    settings = Settings(
+        _env_file=None,
+        openai_api_key="not-real",
+        openai_prompt_cache_enabled=False,
+    )
+    client = FakeClient()
+    provider = OpenAIProvider(settings, client=client)
+
+    await provider.evaluate(
+        system_prompt="stable prefix",
+        user_payload={"transcript": "dynamic suffix"},
+        response_model=CompactEvaluationOutput,
+        prompt_cache_key="safe-key",
+    )
+
+    kwargs = client.responses.kwargs
+    assert kwargs["input"][0]["content"] == "stable prefix"
+    assert "prompt_cache_key" not in kwargs
+    assert "prompt_cache_options" not in kwargs
 
 
 @pytest.mark.asyncio

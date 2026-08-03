@@ -81,31 +81,53 @@ class OpenAIProvider:
         system_prompt: str,
         user_payload: dict[str, object],
         response_model: type[OutputModel],
+        request_type: str = "evaluation",
+        max_output_tokens: int | None = None,
+        prompt_cache_key: str | None = None,
     ) -> ProviderEvaluation:
         model = self._settings.openai_evaluation_model
         started = perf_counter()
         retry_count = 0
         usage: UsageMetadata | None = None
         try:
+            request_arguments: dict[str, object] = {
+                "model": model,
+                "reasoning": {"effort": "none"},
+                "store": False,
+                "max_output_tokens": (
+                    max_output_tokens or self._settings.openai_evaluation_max_output_tokens
+                ),
+                "verbosity": self._settings.openai_evaluation_verbosity,
+                "input": [
+                    {
+                        "role": "system",
+                        "content": self._system_content(system_prompt, prompt_cache_key),
+                    },
+                    {
+                        "role": "user",
+                        "content": json.dumps(
+                            user_payload,
+                            ensure_ascii=False,
+                            separators=(",", ":"),
+                        ),
+                    },
+                ],
+                "text_format": response_model,
+            }
+            if self._settings.openai_prompt_cache_enabled and prompt_cache_key:
+                request_arguments.update(
+                    {
+                        "prompt_cache_key": prompt_cache_key,
+                        "prompt_cache_options": {
+                            "mode": "explicit",
+                            "ttl": self._settings.openai_prompt_cache_ttl,
+                        },
+                    }
+                )
+
             response, retry_count = await self._with_rate_limit_retry(
                 lambda: self._client.responses.parse(
-                    model=model,
-                    reasoning={"effort": "none"},
-                    store=False,
-                    max_output_tokens=self._settings.openai_evaluation_max_output_tokens,
-                    verbosity=self._settings.openai_evaluation_verbosity,
-                    input=[
-                        {"role": "system", "content": system_prompt},
-                        {
-                            "role": "user",
-                            "content": json.dumps(
-                                user_payload,
-                                ensure_ascii=False,
-                                separators=(",", ":"),
-                            ),
-                        },
-                    ],
-                    text_format=response_model,
+                    **request_arguments,
                 )
             )
             incomplete_reason = getattr(
@@ -125,7 +147,7 @@ class OpenAIProvider:
 
             response_model_name = str(getattr(response, "model", model))
             self._record(
-                request_type="evaluation",
+                request_type=request_type,
                 model=response_model_name,
                 started=started,
                 success=True,
@@ -144,7 +166,7 @@ class OpenAIProvider:
                 else retry_count
             )
             self._record(
-                request_type="evaluation",
+                request_type=request_type,
                 model=model,
                 started=started,
                 success=False,
@@ -153,6 +175,21 @@ class OpenAIProvider:
                 error_type=type(error).__name__,
             )
             raise
+
+    def _system_content(
+        self,
+        system_prompt: str,
+        prompt_cache_key: str | None,
+    ) -> str | list[dict[str, object]]:
+        if not self._settings.openai_prompt_cache_enabled or not prompt_cache_key:
+            return system_prompt
+        return [
+            {
+                "type": "input_text",
+                "text": system_prompt,
+                "prompt_cache_breakpoint": {"mode": "explicit"},
+            }
+        ]
 
     async def _with_rate_limit_retry(
         self,

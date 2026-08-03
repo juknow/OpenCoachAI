@@ -130,6 +130,7 @@ export interface ImprovementAnswer {
   sentenceCount: number
   wordCount: number
   text: string
+  sentences?: string[]
 }
 
 export interface EvaluationResult {
@@ -147,7 +148,6 @@ export interface EvaluationResult {
   vocabulary: VocabularySuggestion[]
   rubrics: RubricScore[]
   strengths: Array<{ title: string; detail: string; evidence: string }>
-  limitations: Array<{ title: string; detail: string; evidence: string }>
   blocker: { title: string; detail: string; evidence: string }
   corrections: Array<{ before: string; after: string; reason: string }>
   improvements: ImprovementAnswer[]
@@ -203,6 +203,7 @@ export interface PracticeRecord {
 export interface ActiveSession {
   id: string
   question: Question
+  profileSnapshot?: PracticeProfile
   attempt: 1 | 2
   transcript?: TranscriptResult
   firstAttempt?: AttemptResult

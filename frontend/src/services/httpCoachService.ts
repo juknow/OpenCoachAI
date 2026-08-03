@@ -4,6 +4,8 @@ import type {
   ApiQuestionType,
   EvaluationRequest,
   EvaluationResponse,
+  HigherAnswerRequest,
+  HigherAnswerResponse,
   TranscriptionResponse,
 } from '../types/api.ts'
 import type {
@@ -16,14 +18,14 @@ import type {
 import type {
   CoachService,
   EvaluationInput,
+  HigherAnswerInput,
   ProgressListener,
   TranscriptionInput,
 } from './coachService.ts'
 import { requestApi } from './apiClient.ts'
 import {
-  countEnglishWords,
-  countSentences,
   createTranscriptResult,
+  splitSentences,
   toApiSpeechMetrics,
 } from './transcriptMetricsService.ts'
 
@@ -131,11 +133,11 @@ const mapEvaluation = (response: EvaluationResponse): EvaluationResult => {
     ],
     mainPointLabel: mainPointLabel[delivery.mainPoint.status],
     mainPointFeedback: delivery.mainPoint.feedbackKorean,
-    feelingLanguage: delivery.feelingLanguage.expressions,
+    feelingLanguage: delivery.feelingExpressions,
     connectors: [
       ...new Set([
-        ...delivery.discourseMarkers.functional,
-        ...delivery.discourseMarkers.disruptive,
+        ...delivery.functionalMarkers,
+        ...delivery.disruptiveMarkers,
       ]),
     ],
     expressions: value.naturalPhraseSuggestions.map((item) => ({
@@ -164,11 +166,6 @@ const mapEvaluation = (response: EvaluationResponse): EvaluationResult => {
       detail: item.explanationKorean,
       evidence: item.evidenceFromTranscript,
     })),
-    limitations: value.limitations.map((item) => ({
-      title: item.title,
-      detail: item.explanationKorean,
-      evidence: item.evidenceFromTranscript,
-    })),
     blocker: {
       title: value.primaryLevelBlocker.title,
       detail: value.primaryLevelBlocker.explanationKorean,
@@ -182,15 +179,10 @@ const mapEvaluation = (response: EvaluationResponse): EvaluationResult => {
     improvements: [
       {
         variant: 'core',
-        sentenceCount: countSentences(value.minimalCorrectionSentences.join(' ')),
-        wordCount: countEnglishWords(value.minimalCorrectionSentences.join(' ')),
-        text: value.minimalCorrectionSentences.join(' '),
-      },
-      {
-        variant: 'next',
-        sentenceCount: countSentences(value.nextLevelSentences.join(' ')),
-        wordCount: countEnglishWords(value.nextLevelSentences.join(' ')),
-        text: value.nextLevelSentences.join(' '),
+        sentenceCount: value.baseAnswer.sentenceCount,
+        wordCount: value.baseAnswer.wordCount,
+        text: value.baseAnswer.sentences.join(' '),
+        sentences: value.baseAnswer.sentences,
       },
     ],
     reusableStructure: value.reusableStructure.map(
@@ -249,12 +241,49 @@ export const httpCoachService: CoachService = {
       speechMetrics: toApiSpeechMetrics(input.transcript),
       previousAttempt: previousAttemptForApi(input),
     }
-    const response = await requestApi<EvaluationResponse>('/api/evaluations', {
+    const response = await requestApi<EvaluationResponse>('/api/v2/evaluations', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     })
     onProgress?.('improve')
     return mapEvaluation(response)
+  },
+
+  async generateHigherAnswer(input: HigherAnswerInput) {
+    const baseAnswer = input.evaluation.improvements.find(
+      (answer) => answer.variant === 'core',
+    )
+    if (!baseAnswer) throw new Error('기본 개선 답변을 찾지 못했습니다.')
+
+    const payload: HigherAnswerRequest = {
+      profile: {
+        targetLevel: input.profile.targetLevel,
+        currentLevel: input.profile.currentLevel,
+      },
+      question: {
+        type: questionTypeForApi(input.question.type),
+        topic: input.question.topic,
+        question: input.question.prompt,
+      },
+      transcript: input.transcript.editedText,
+      mostLikelyLevel: input.evaluation.estimatedLevel,
+      baseAnswer: baseAnswer.sentences ?? splitSentences(baseAnswer.text),
+    }
+    const response = await requestApi<HigherAnswerResponse>(
+      '/api/v2/improvements/higher',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      },
+    )
+    return {
+      variant: 'next',
+      sentenceCount: response.answer.sentenceCount,
+      wordCount: response.answer.wordCount,
+      text: response.answer.sentences.join(' '),
+      sentences: response.answer.sentences,
+    }
   },
 }

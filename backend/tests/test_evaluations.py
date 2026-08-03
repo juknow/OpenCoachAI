@@ -59,6 +59,92 @@ def test_evaluation_returns_enriched_structured_result(
     assert 140 <= count_improvement_words(higher) <= 180
 
 
+def test_v2_evaluation_uses_slim_lazy_contract(
+    client: TestClient, fake_provider: FakeProvider
+) -> None:
+    response = client.post("/api/v2/evaluations", json=evaluation_request())
+
+    assert response.status_code == 200
+    payload = response.json()
+    evaluation = payload["evaluation"]
+    assert set(evaluation) == {
+        "mostLikelyLevel",
+        "estimatedRange",
+        "confidence",
+        "confidenceReason",
+        "summaryKorean",
+        "dimensions",
+        "conversationalDelivery",
+        "naturalPhraseSuggestions",
+        "recommendedVocabulary",
+        "strengths",
+        "primaryLevelBlocker",
+        "corrections",
+        "retryMission",
+        "baseAnswer",
+        "reusableStructure",
+        "safetyNoticeKorean",
+    }
+    assert evaluation["mostLikelyLevel"] == "IM2"
+    assert evaluation["baseAnswer"]["variant"] == "core"
+    assert evaluation["baseAnswer"]["sentenceCount"] == 10
+    assert 120 <= evaluation["baseAnswer"]["wordCount"] <= 160
+    assert "nextLevelSentences" not in evaluation
+    assert "limitations" not in evaluation
+    assert "recommendedNextQuestionType" not in evaluation
+    assert "first20SecondsEstimate" not in evaluation["conversationalDelivery"]["mainPoint"]
+    assert set(evaluation["conversationalDelivery"]) == {
+        "fluency",
+        "accuracy",
+        "naturalness",
+        "mainPoint",
+        "feelingExpressions",
+        "functionalMarkers",
+        "disruptiveMarkers",
+    }
+    call = fake_provider.evaluation_calls[0]
+    assert call["response_model"].__name__ == "CompactEvaluationV2Output"
+    assert call["request_type"] == "evaluation_v2"
+    assert call["prompt_cache_key"].startswith("opic:evaluation-v2:")
+
+
+def test_higher_answer_is_generated_lazily_and_reused(
+    client: TestClient, fake_provider: FakeProvider
+) -> None:
+    request = evaluation_request()
+    base_answer = evaluation_output().base_answer
+    payload = {
+        "profile": {
+            "targetLevel": request["profile"]["targetLevel"],
+            "currentLevel": request["profile"]["currentLevel"],
+        },
+        "question": {
+            "type": request["question"]["type"],
+            "topic": request["question"]["topic"],
+            "question": request["question"]["question"],
+        },
+        "transcript": request["transcript"],
+        "mostLikelyLevel": "IM2",
+        "baseAnswer": base_answer,
+    }
+
+    first = client.post("/api/v2/improvements/higher", json=payload)
+    second = client.post("/api/v2/improvements/higher", json=payload)
+
+    assert first.status_code == 200
+    assert second.status_code == 200
+    assert first.json()["answer"]["variant"] == "next"
+    assert first.json()["answer"]["sentenceCount"] == 13
+    assert 140 <= first.json()["answer"]["wordCount"] <= 180
+    assert first.json()["answer"] == second.json()["answer"]
+    assert first.json()["metadata"]["requestId"] != second.json()["metadata"]["requestId"]
+    assert len(fake_provider.evaluation_calls) == 1
+    call = fake_provider.evaluation_calls[0]
+    assert call["request_type"] == "higher_answer"
+    assert call["max_output_tokens"] == 900
+    assert call["prompt_cache_key"].startswith("opic:higher-answer:")
+
+
 def test_evaluation_rejects_invalid_cardinality(client: TestClient) -> None:
     request = evaluation_request()
     request["previousAttempt"] = {

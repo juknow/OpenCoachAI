@@ -1,6 +1,7 @@
 import type {
   AttemptResult,
   EvaluationResult,
+  ImprovementAnswer,
   PracticeProfile,
   ProcessingStage,
   Question,
@@ -25,6 +26,13 @@ export interface EvaluationInput {
   previousAttempt?: AttemptResult
 }
 
+export interface HigherAnswerInput {
+  question: Question
+  profile: PracticeProfile
+  transcript: TranscriptResult
+  evaluation: EvaluationResult
+}
+
 export interface CoachService {
   transcribe(
     input: TranscriptionInput,
@@ -34,4 +42,5 @@ export interface CoachService {
     input: EvaluationInput,
     onProgress?: ProgressListener,
   ): Promise<EvaluationResult>
+  generateHigherAnswer(input: HigherAnswerInput): Promise<ImprovementAnswer>
 }

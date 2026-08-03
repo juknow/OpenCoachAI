@@ -4,9 +4,16 @@ import pytest
 
 from app.config import Settings
 from app.evaluation_cache import EvaluationCache
-from app.schemas.evaluation import EvaluationRequest, EvaluationResponse
+from app.schemas.evaluation import (
+    EvaluationRequest,
+    EvaluationResponse,
+    EvaluationV2Response,
+    HigherAnswerRequest,
+    HigherAnswerResponse,
+)
 from app.services.evaluation_service import EvaluationService
-from tests.helpers import evaluation_request
+from app.services.evaluation_v2_service import EvaluationV2Service, HigherAnswerService
+from tests.helpers import evaluation_output, evaluation_request
 
 
 @pytest.mark.asyncio
@@ -74,3 +81,63 @@ def test_evaluation_cache_key_never_depends_on_api_key() -> None:
     )
 
     assert first._cache_key(request) == second._cache_key(request)
+
+
+def test_v2_result_and_prompt_cache_keys_exclude_secrets_and_dynamic_suffix() -> None:
+    request = EvaluationRequest.model_validate(evaluation_request())
+    changed_payload = evaluation_request()
+    changed_payload["transcript"] = "A different learner transcript."
+    changed = EvaluationRequest.model_validate(changed_payload)
+    first = EvaluationV2Service(
+        object(),
+        "stable prompt",
+        Settings(_env_file=None, openai_api_key="first-private-key"),
+        EvaluationCache[EvaluationV2Response](ttl_seconds=300, max_entries=8),
+    )
+    second = EvaluationV2Service(
+        object(),
+        "stable prompt",
+        Settings(_env_file=None, openai_api_key="different-private-key"),
+        EvaluationCache[EvaluationV2Response](ttl_seconds=300, max_entries=8),
+    )
+
+    assert first._cache_key(request) == second._cache_key(request)
+    assert first._cache_key(request) != first._cache_key(changed)
+    assert first._prompt_cache_key() == second._prompt_cache_key()
+    assert "private" not in first._prompt_cache_key()
+
+
+def test_higher_answer_cache_key_excludes_api_key() -> None:
+    source = evaluation_request()
+    request = HigherAnswerRequest.model_validate(
+        {
+            "profile": {
+                "targetLevel": source["profile"]["targetLevel"],
+                "currentLevel": source["profile"]["currentLevel"],
+            },
+            "question": {
+                "type": source["question"]["type"],
+                "topic": source["question"]["topic"],
+                "question": source["question"]["question"],
+            },
+            "transcript": source["transcript"],
+            "mostLikelyLevel": "IM2",
+            "baseAnswer": evaluation_output().base_answer,
+        }
+    )
+    first = HigherAnswerService(
+        object(),
+        "stable higher prompt",
+        Settings(_env_file=None, openai_api_key="first-private-key"),
+        EvaluationCache[HigherAnswerResponse](ttl_seconds=300, max_entries=8),
+    )
+    second = HigherAnswerService(
+        object(),
+        "stable higher prompt",
+        Settings(_env_file=None, openai_api_key="different-private-key"),
+        EvaluationCache[HigherAnswerResponse](ttl_seconds=300, max_entries=8),
+    )
+
+    assert first._cache_key(request) == second._cache_key(request)
+    assert first._prompt_cache_key() == second._prompt_cache_key()
+    assert "private" not in first._prompt_cache_key()

@@ -20,13 +20,20 @@ class Settings(BaseSettings):
     openai_evaluation_model: str = "gpt-5.6-luna"
     openai_timeout_seconds: float = Field(default=60, ge=5, le=180)
     openai_evaluation_max_output_tokens: int = Field(default=2_400, ge=1_600, le=8_000)
+    openai_higher_answer_max_output_tokens: int = Field(default=900, ge=500, le=2_000)
     openai_evaluation_verbosity: Literal["low", "medium", "high"] = "low"
+    openai_prompt_cache_enabled: bool = True
+    openai_prompt_cache_ttl: Literal["30m"] = "30m"
     openai_rate_limit_max_retries: int = Field(default=1, ge=0, le=2)
     openai_rate_limit_retry_delay_seconds: float = Field(default=0.5, ge=0, le=10)
     app_environment: Literal["development", "test", "production"] = "development"
     openai_usage_log_enabled: bool = False
     evaluation_prompt_version: Literal["v1", "v2"] = "v2"
     evaluation_schema_version: Literal["v1", "v2"] = "v2"
+    evaluation_v2_prompt_version: Literal["v1"] = "v1"
+    evaluation_v2_schema_version: Literal["v1"] = "v1"
+    higher_answer_prompt_version: Literal["v1"] = "v1"
+    higher_answer_schema_version: Literal["v1"] = "v1"
     evaluation_cache_ttl_seconds: int = Field(default=300, ge=0, le=3_600)
     evaluation_cache_max_entries: int = Field(default=128, ge=1, le=10_000)
     allowed_origins: str = "http://localhost:5173,http://127.0.0.1:5173"

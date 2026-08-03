@@ -3,9 +3,17 @@ from collections import OrderedDict
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from time import monotonic
-from typing import Literal
+from typing import Literal, Protocol
 
 CacheStatus = Literal["miss", "hit", "coalesced", "disabled"]
+
+
+class ResultCache[ValueT](Protocol):
+    async def get_or_create(
+        self,
+        key: str,
+        factory: Callable[[], Awaitable[ValueT]],
+    ) -> tuple[ValueT, CacheStatus]: ...
 
 
 @dataclass(frozen=True)

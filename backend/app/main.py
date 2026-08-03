@@ -7,13 +7,21 @@ from app.api.routes import evaluations, health, transcriptions
 from app.config import get_settings
 from app.errors import register_error_handlers
 from app.evaluation_cache import EvaluationCache
-from app.schemas.evaluation import EvaluationResponse
+from app.schemas.evaluation import EvaluationResponse, EvaluationV2Response, HigherAnswerResponse
 
 
 def create_app() -> FastAPI:
     settings = get_settings()
     application = FastAPI(title="OPIc Coach API", version="1.0.0")
     application.state.evaluation_cache = EvaluationCache[EvaluationResponse](
+        ttl_seconds=settings.evaluation_cache_ttl_seconds,
+        max_entries=settings.evaluation_cache_max_entries,
+    )
+    application.state.evaluation_v2_cache = EvaluationCache[EvaluationV2Response](
+        ttl_seconds=settings.evaluation_cache_ttl_seconds,
+        max_entries=settings.evaluation_cache_max_entries,
+    )
+    application.state.higher_answer_cache = EvaluationCache[HigherAnswerResponse](
         ttl_seconds=settings.evaluation_cache_ttl_seconds,
         max_entries=settings.evaluation_cache_max_entries,
     )

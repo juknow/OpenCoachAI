@@ -96,6 +96,13 @@ export interface EvaluationRequest {
   } | null
 }
 
+export interface ApiImprovementAnswer {
+  variant: 'core' | 'next'
+  sentences: string[]
+  sentenceCount: number
+  wordCount: number
+}
+
 export interface ApiEvaluationResult {
   mostLikelyLevel: PracticeLevel
   confidence: 'low' | 'medium' | 'high'
@@ -108,18 +115,11 @@ export interface ApiEvaluationResult {
     naturalness: ApiDimensionEvaluation
     mainPoint: {
       status: 'clear_early' | 'late' | 'missing' | 'uncertain'
-      first20SecondsEstimate: string
       feedbackKorean: string
     }
-    feelingLanguage: {
-      expressions: string[]
-      feedbackKorean: string
-    }
-    discourseMarkers: {
-      functional: string[]
-      disruptive: string[]
-      feedbackKorean: string
-    }
+    feelingExpressions: string[]
+    functionalMarkers: string[]
+    disruptiveMarkers: string[]
   }
   naturalPhraseSuggestions: Array<{
     contextKorean: string
@@ -134,7 +134,6 @@ export interface ApiEvaluationResult {
     exampleSentenceEnglish: string
   }>
   strengths: ApiEvidence[]
-  limitations: ApiEvidence[]
   primaryLevelBlocker: ApiEvidence
   corrections: Array<{
     original: string
@@ -142,9 +141,7 @@ export interface ApiEvaluationResult {
     explanationKorean: string
   }>
   retryMission: [string, string, string]
-  recommendedNextQuestionType: ApiQuestionType
-  minimalCorrectionSentences: string[]
-  nextLevelSentences: string[]
+  baseAnswer: ApiImprovementAnswer
   estimatedRange: { lower: PracticeLevel; upper: PracticeLevel }
   reusableStructure: Array<{
     step: number
@@ -168,6 +165,26 @@ export interface EvaluationResponse {
       totalTokens?: number
     } | null
   }
+}
+
+export interface HigherAnswerRequest {
+  profile: {
+    targetLevel: 'IM2' | 'IM3' | 'IH' | 'AL'
+    currentLevel: 'unknown' | 'IM1' | 'IM2' | 'IM3' | 'IH'
+  }
+  question: {
+    type: ApiQuestionType
+    topic: string
+    question: string
+  }
+  transcript: string
+  mostLikelyLevel: PracticeLevel
+  baseAnswer: string[]
+}
+
+export interface HigherAnswerResponse {
+  answer: ApiImprovementAnswer
+  metadata: EvaluationResponse['metadata']
 }
 
 export interface ApiErrorResponse {

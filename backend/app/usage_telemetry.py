@@ -1,14 +1,14 @@
 import json
 import logging
-from collections import deque
+from collections import defaultdict, deque
 from dataclasses import asdict, dataclass
 from threading import Lock
 
 from app.schemas.common import UsageMetadata
 
 LOGGER = logging.getLogger("opic.usage")
-_EVALUATION_TOTALS: deque[int] = deque(maxlen=100)
-_EVALUATION_TOTALS_LOCK = Lock()
+_USAGE_TOTALS: defaultdict[str, deque[int]] = defaultdict(lambda: deque(maxlen=100))
+_USAGE_TOTALS_LOCK = Lock()
 
 
 @dataclass(frozen=True)
@@ -32,14 +32,15 @@ def record_usage_event(event: UsageEvent, *, enabled: bool) -> None:
     if not enabled:
         return
     payload = {key: value for key, value in asdict(event).items() if value is not None}
-    if event.request_type == "evaluation" and event.success and event.total_tokens > 0:
-        with _EVALUATION_TOTALS_LOCK:
-            _EVALUATION_TOTALS.append(event.total_tokens)
+    if event.request_type != "transcription" and event.success and event.total_tokens > 0:
+        with _USAGE_TOTALS_LOCK:
+            totals = _USAGE_TOTALS[event.request_type]
+            totals.append(event.total_tokens)
             payload["rolling_total_tokens_average"] = round(
-                sum(_EVALUATION_TOTALS) / len(_EVALUATION_TOTALS),
+                sum(totals) / len(totals),
                 1,
             )
-            payload["rolling_sample_count"] = len(_EVALUATION_TOTALS)
+            payload["rolling_sample_count"] = len(totals)
     LOGGER.info("openai_usage %s", json.dumps(payload, separators=(",", ":"), sort_keys=True))
 
 
@@ -71,6 +72,17 @@ def usage_event(
     )
 
 
-def record_server_cache_event(*, status: str, enabled: bool) -> None:
+def record_server_cache_event(
+    *,
+    status: str,
+    enabled: bool,
+    request_type: str = "evaluation_legacy",
+) -> None:
     if enabled:
-        LOGGER.info("evaluation_cache %s", json.dumps({"status": status}, separators=(",", ":")))
+        LOGGER.info(
+            "result_cache %s",
+            json.dumps(
+                {"requestType": request_type, "status": status},
+                separators=(",", ":"),
+            ),
+        )

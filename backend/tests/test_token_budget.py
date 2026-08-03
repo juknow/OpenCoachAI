@@ -4,13 +4,23 @@ from pathlib import Path
 
 from app.schemas.evaluation import (
     CompactEvaluationOutput,
+    CompactEvaluationV2Output,
+    CompactHigherAnswerOutput,
     EvaluationModelOutput,
     EvaluationRequest,
 )
 from app.services.evaluation_service import EvaluationService
-from tests.helpers import evaluation_output, evaluation_request
+from app.services.evaluation_v2_service import EvaluationV2Service
+from tests.helpers import (
+    evaluation_output,
+    evaluation_request,
+    evaluation_v2_output,
+    higher_answer_output,
+)
 
 PROMPT_PATH = Path(__file__).resolve().parents[1] / "app" / "prompts" / "evaluation.txt"
+CORE_PROMPT_PATH = Path(__file__).resolve().parents[1] / "app" / "prompts" / "evaluation_core.txt"
+HIGHER_PROMPT_PATH = Path(__file__).resolve().parents[1] / "app" / "prompts" / "higher_answer.txt"
 
 
 def estimate_tokens_offline(value: str) -> int:
@@ -61,3 +71,78 @@ def test_fixture_stays_within_offline_four_thousand_token_budget() -> None:
     estimated_total = sum(estimate_tokens_offline(part) for part in parts)
 
     assert estimated_total <= 4_000
+
+
+def test_v2_initial_evaluation_is_smaller_than_eager_contract() -> None:
+    request = EvaluationRequest.model_validate(evaluation_request())
+    payload = json.dumps(
+        EvaluationV2Service._ai_payload(request),
+        ensure_ascii=False,
+        separators=(",", ":"),
+    )
+    eager_parts = [
+        PROMPT_PATH.read_text(encoding="utf-8").strip(),
+        compact_json_schema(),
+        payload,
+        evaluation_output().model_dump_json(by_alias=True),
+    ]
+    lazy_parts = [
+        CORE_PROMPT_PATH.read_text(encoding="utf-8").strip(),
+        json.dumps(
+            CompactEvaluationV2Output.model_json_schema(by_alias=True),
+            ensure_ascii=False,
+            separators=(",", ":"),
+        ),
+        payload,
+        evaluation_v2_output().model_dump_json(by_alias=True),
+    ]
+    eager_total = sum(estimate_tokens_offline(part) for part in eager_parts)
+    lazy_total = sum(estimate_tokens_offline(part) for part in lazy_parts)
+
+    assert lazy_total < eager_total
+    assert lazy_total <= 3_600
+
+
+def test_explicit_cache_breakpoint_has_an_eligible_stable_prefix() -> None:
+    stable_prefix = [
+        CORE_PROMPT_PATH.read_text(encoding="utf-8").strip(),
+        json.dumps(
+            CompactEvaluationV2Output.model_json_schema(by_alias=True),
+            ensure_ascii=False,
+            separators=(",", ":"),
+        ),
+    ]
+
+    assert sum(estimate_tokens_offline(part) for part in stable_prefix) >= 1_024
+
+
+def test_lazy_higher_answer_has_a_separate_bounded_budget() -> None:
+    request = evaluation_request()
+    higher_payload = {
+        "profile": {
+            "targetLevel": request["profile"]["targetLevel"],
+            "currentLevel": request["profile"]["currentLevel"],
+        },
+        "question": {
+            "type": request["question"]["type"],
+            "topic": request["question"]["topic"],
+            "question": request["question"]["question"],
+        },
+        "transcript": request["transcript"],
+        "mostLikelyLevel": "IM2",
+        "baseAnswer": evaluation_output().base_answer,
+    }
+    parts = [
+        HIGHER_PROMPT_PATH.read_text(encoding="utf-8").strip(),
+        json.dumps(
+            CompactHigherAnswerOutput.model_json_schema(by_alias=True),
+            ensure_ascii=False,
+            separators=(",", ":"),
+        ),
+        json.dumps(higher_payload, ensure_ascii=False, separators=(",", ":")),
+        higher_answer_output().model_dump_json(by_alias=True),
+    ]
+
+    estimated_total = sum(estimate_tokens_offline(part) for part in parts)
+
+    assert estimated_total <= 1_800

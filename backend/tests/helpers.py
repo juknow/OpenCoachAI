@@ -1,4 +1,8 @@
-from app.schemas.evaluation import CompactEvaluationOutput
+from app.schemas.evaluation import (
+    CompactEvaluationOutput,
+    CompactEvaluationV2Output,
+    CompactHigherAnswerOutput,
+)
 
 
 def evaluation_output() -> CompactEvaluationOutput:
@@ -120,6 +124,17 @@ def evaluation_output() -> CompactEvaluationOutput:
             "higherAnswer": higher_answer,
         }
     )
+
+
+def evaluation_v2_output() -> CompactEvaluationV2Output:
+    payload = evaluation_output().model_dump(by_alias=False)
+    payload.pop("next_question_type")
+    payload.pop("higher_answer")
+    return CompactEvaluationV2Output.model_validate(payload)
+
+
+def higher_answer_output() -> CompactHigherAnswerOutput:
+    return CompactHigherAnswerOutput(sentences=evaluation_output().higher_answer)
 
 
 def evaluation_request() -> dict[str, object]:

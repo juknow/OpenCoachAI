@@ -38,4 +38,7 @@ class AiProvider(Protocol):
         system_prompt: str,
         user_payload: dict[str, object],
         response_model: type[OutputModel],
+        request_type: str = "evaluation",
+        max_output_tokens: int | None = None,
+        prompt_cache_key: str | None = None,
     ) -> ProviderEvaluation: ...
