@@ -21,8 +21,7 @@ class Settings(BaseSettings):
     openai_timeout_seconds: float = Field(default=60, ge=5, le=180)
     openai_evaluation_max_output_tokens: int = Field(default=2_400, ge=1_600, le=8_000)
     openai_higher_answer_max_output_tokens: int = Field(default=900, ge=500, le=2_000)
-    openai_evaluation_verbosity: Literal["low", "medium", "high"] = "low"
-    openai_prompt_cache_enabled: bool = True
+    openai_prompt_cache_enabled: bool = False
     openai_prompt_cache_ttl: Literal["30m"] = "30m"
     openai_rate_limit_max_retries: int = Field(default=1, ge=0, le=2)
     openai_rate_limit_retry_delay_seconds: float = Field(default=0.5, ge=0, le=10)

@@ -2,6 +2,10 @@ import json
 import math
 from pathlib import Path
 
+import pytest
+from openai.lib._pydantic import to_strict_json_schema
+from pydantic import ValidationError
+
 from app.schemas.evaluation import (
     CompactEvaluationOutput,
     CompactEvaluationV2Output,
@@ -114,6 +118,23 @@ def test_explicit_cache_breakpoint_has_an_eligible_stable_prefix() -> None:
     ]
 
     assert sum(estimate_tokens_offline(part) for part in stable_prefix) >= 1_024
+
+
+def test_openai_transport_schema_omits_string_lengths_but_server_still_validates() -> None:
+    schema_json = json.dumps(
+        to_strict_json_schema(CompactEvaluationV2Output),
+        ensure_ascii=False,
+        separators=(",", ":"),
+    )
+    assert '"minLength"' not in schema_json
+    assert '"maxLength"' not in schema_json
+    assert '"minItems":10' in schema_json
+    assert '"maxItems":12' in schema_json
+
+    invalid_output = evaluation_v2_output().model_dump()
+    invalid_output["summary"] = ""
+    with pytest.raises(ValidationError):
+        CompactEvaluationV2Output.model_validate(invalid_output)
 
 
 def test_lazy_higher_answer_has_a_separate_bounded_budget() -> None:

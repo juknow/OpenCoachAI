@@ -3,7 +3,7 @@ from types import SimpleNamespace
 
 import httpx
 import pytest
-from openai import RateLimitError
+from openai import BadRequestError, RateLimitError
 
 from app.config import Settings
 from app.errors import ProviderResponseError
@@ -35,14 +35,41 @@ class FakeResponses:
         self.calls = 0
         self.rate_limit_once = False
         self.incomplete = False
+        self.prompt_cache_error_once = False
+        self.unrelated_bad_request = False
+        self.history = []
 
     async def parse(self, **kwargs):
         self.kwargs = kwargs
+        self.history.append(kwargs)
         self.calls += 1
         if self.rate_limit_once and self.calls == 1:
             request = httpx.Request("POST", "https://api.openai.com/v1/responses")
             response = httpx.Response(429, request=request)
             raise RateLimitError("rate limited", response=response, body=None)
+        if self.prompt_cache_error_once and self.calls == 1:
+            request = httpx.Request("POST", "https://api.openai.com/v1/responses")
+            response = httpx.Response(400, request=request)
+            raise BadRequestError(
+                "Unsupported parameter: 'prompt_cache_options'.",
+                response=response,
+                body={
+                    "code": "unsupported_parameter",
+                    "type": "invalid_request_error",
+                },
+            )
+        if self.unrelated_bad_request:
+            request = httpx.Request("POST", "https://api.openai.com/v1/responses")
+            response = httpx.Response(400, request=request)
+            raise BadRequestError(
+                "invalid schema",
+                response=response,
+                body={
+                    "code": "invalid_request_error",
+                    "param": "text.format.schema",
+                    "type": "invalid_request_error",
+                },
+            )
         if self.incomplete:
             return SimpleNamespace(
                 status="incomplete",
@@ -76,7 +103,11 @@ class FakeClient:
 
 @pytest.mark.asyncio
 async def test_openai_provider_uses_bounded_cost_parameters_and_usage() -> None:
-    settings = Settings(_env_file=None, openai_api_key="not-real")
+    settings = Settings(
+        _env_file=None,
+        openai_api_key="not-real",
+        openai_prompt_cache_enabled=True,
+    )
     client = FakeClient()
     provider = OpenAIProvider(settings, client=client)
 
@@ -102,7 +133,7 @@ async def test_openai_provider_uses_bounded_cost_parameters_and_usage() -> None:
     assert kwargs["model"] == "gpt-5.6-luna"
     assert kwargs["reasoning"] == {"effort": "none"}
     assert kwargs["store"] is False
-    assert kwargs["verbosity"] == "low"
+    assert "verbosity" not in kwargs
     assert kwargs["max_output_tokens"] == 2_400
     assert kwargs["text_format"] is CompactEvaluationOutput
     assert kwargs["prompt_cache_key"] == "opic:evaluation-v2:gpt-5.6-luna:v1:v1"
@@ -127,12 +158,9 @@ async def test_openai_provider_uses_bounded_cost_parameters_and_usage() -> None:
 
 
 @pytest.mark.asyncio
-async def test_prompt_cache_can_be_disabled_without_changing_payload_order() -> None:
-    settings = Settings(
-        _env_file=None,
-        openai_api_key="not-real",
-        openai_prompt_cache_enabled=False,
-    )
+async def test_prompt_cache_is_disabled_by_default_without_changing_payload_order() -> None:
+    settings = Settings(_env_file=None, openai_api_key="not-real")
+    assert settings.openai_prompt_cache_enabled is False
     client = FakeClient()
     provider = OpenAIProvider(settings, client=client)
 
@@ -147,6 +175,49 @@ async def test_prompt_cache_can_be_disabled_without_changing_payload_order() -> 
     assert kwargs["input"][0]["content"] == "stable prefix"
     assert "prompt_cache_key" not in kwargs
     assert "prompt_cache_options" not in kwargs
+
+
+@pytest.mark.asyncio
+async def test_prompt_cache_compatibility_error_retries_once_without_cache() -> None:
+    settings = Settings(
+        _env_file=None,
+        openai_api_key="not-real",
+        openai_prompt_cache_enabled=True,
+    )
+    client = FakeClient()
+    client.responses.prompt_cache_error_once = True
+    provider = OpenAIProvider(settings, client=client)
+
+    result = await provider.evaluate(
+        system_prompt="stable prefix",
+        user_payload={"transcript": "dynamic suffix"},
+        response_model=CompactEvaluationOutput,
+        prompt_cache_key="safe-key",
+    )
+
+    assert result.output is not None
+    assert client.responses.calls == 2
+    assert "prompt_cache_options" in client.responses.history[0]
+    assert "prompt_cache_options" not in client.responses.history[1]
+    assert client.responses.history[1]["input"][0]["content"] == "stable prefix"
+
+
+@pytest.mark.asyncio
+async def test_unrelated_bad_request_is_not_retried_without_cache() -> None:
+    settings = Settings(_env_file=None, openai_api_key="not-real")
+    client = FakeClient()
+    client.responses.unrelated_bad_request = True
+    provider = OpenAIProvider(settings, client=client)
+
+    with pytest.raises(BadRequestError):
+        await provider.evaluate(
+            system_prompt="evaluate",
+            user_payload={"transcript": "Um"},
+            response_model=CompactEvaluationOutput,
+            prompt_cache_key="safe-key",
+        )
+
+    assert client.responses.calls == 1
 
 
 @pytest.mark.asyncio

@@ -4,11 +4,11 @@ from collections.abc import Awaitable, Callable
 from time import perf_counter
 from typing import Any, cast
 
-from openai import AsyncOpenAI, RateLimitError
+from openai import AsyncOpenAI, BadRequestError, RateLimitError
 from pydantic import BaseModel
 
 from app.config import Settings
-from app.errors import ProviderResponseError
+from app.errors import ProviderResponseError, openai_error_field, openai_error_parameter
 from app.providers.base import OutputModel, ProviderEvaluation, ProviderTranscription
 from app.schemas.common import UsageMetadata
 from app.usage_telemetry import record_usage_event, usage_event
@@ -90,46 +90,42 @@ class OpenAIProvider:
         retry_count = 0
         usage: UsageMetadata | None = None
         try:
-            request_arguments: dict[str, object] = {
-                "model": model,
-                "reasoning": {"effort": "none"},
-                "store": False,
-                "max_output_tokens": (
-                    max_output_tokens or self._settings.openai_evaluation_max_output_tokens
-                ),
-                "verbosity": self._settings.openai_evaluation_verbosity,
-                "input": [
-                    {
-                        "role": "system",
-                        "content": self._system_content(system_prompt, prompt_cache_key),
-                    },
-                    {
-                        "role": "user",
-                        "content": json.dumps(
-                            user_payload,
-                            ensure_ascii=False,
-                            separators=(",", ":"),
-                        ),
-                    },
-                ],
-                "text_format": response_model,
-            }
-            if self._settings.openai_prompt_cache_enabled and prompt_cache_key:
-                request_arguments.update(
-                    {
-                        "prompt_cache_key": prompt_cache_key,
-                        "prompt_cache_options": {
-                            "mode": "explicit",
-                            "ttl": self._settings.openai_prompt_cache_ttl,
-                        },
-                    }
-                )
-
-            response, retry_count = await self._with_rate_limit_retry(
-                lambda: self._client.responses.parse(
-                    **request_arguments,
-                )
+            use_prompt_cache = bool(self._settings.openai_prompt_cache_enabled and prompt_cache_key)
+            request_arguments = self._evaluation_request_arguments(
+                model=model,
+                system_prompt=system_prompt,
+                user_payload=user_payload,
+                response_model=response_model,
+                max_output_tokens=max_output_tokens,
+                prompt_cache_key=prompt_cache_key,
+                use_prompt_cache=use_prompt_cache,
             )
+
+            try:
+                response, retry_count = await self._with_rate_limit_retry(
+                    lambda: self._client.responses.parse(**request_arguments)
+                )
+            except BadRequestError as error:
+                if not use_prompt_cache or not self._is_prompt_cache_compatibility_error(error):
+                    raise
+
+                # Explicit cache breakpoints are an optional optimization. Older
+                # models and unsupported content blocks reject them with a 400.
+                # Retry once without those fields so evaluation remains available.
+                request_arguments = self._evaluation_request_arguments(
+                    model=model,
+                    system_prompt=system_prompt,
+                    user_payload=user_payload,
+                    response_model=response_model,
+                    max_output_tokens=max_output_tokens,
+                    prompt_cache_key=prompt_cache_key,
+                    use_prompt_cache=False,
+                )
+                response, fallback_retries = await self._with_rate_limit_retry(
+                    lambda: self._client.responses.parse(**request_arguments)
+                )
+                retry_count = 1 + fallback_retries
+
             incomplete_reason = getattr(
                 getattr(response, "incomplete_details", None),
                 "reason",
@@ -176,12 +172,58 @@ class OpenAIProvider:
             )
             raise
 
+    def _evaluation_request_arguments(
+        self,
+        *,
+        model: str,
+        system_prompt: str,
+        user_payload: dict[str, object],
+        response_model: type[OutputModel],
+        max_output_tokens: int | None,
+        prompt_cache_key: str | None,
+        use_prompt_cache: bool,
+    ) -> dict[str, object]:
+        request_arguments: dict[str, object] = {
+            "model": model,
+            "reasoning": {"effort": "none"},
+            "store": False,
+            "max_output_tokens": (
+                max_output_tokens or self._settings.openai_evaluation_max_output_tokens
+            ),
+            "input": [
+                {
+                    "role": "system",
+                    "content": self._system_content(system_prompt, use_prompt_cache),
+                },
+                {
+                    "role": "user",
+                    "content": json.dumps(
+                        user_payload,
+                        ensure_ascii=False,
+                        separators=(",", ":"),
+                    ),
+                },
+            ],
+            "text_format": response_model,
+        }
+        if use_prompt_cache and prompt_cache_key:
+            request_arguments.update(
+                {
+                    "prompt_cache_key": prompt_cache_key,
+                    "prompt_cache_options": {
+                        "mode": "explicit",
+                        "ttl": self._settings.openai_prompt_cache_ttl,
+                    },
+                }
+            )
+        return request_arguments
+
     def _system_content(
         self,
         system_prompt: str,
-        prompt_cache_key: str | None,
+        use_prompt_cache: bool,
     ) -> str | list[dict[str, object]]:
-        if not self._settings.openai_prompt_cache_enabled or not prompt_cache_key:
+        if not use_prompt_cache:
             return system_prompt
         return [
             {
@@ -190,6 +232,14 @@ class OpenAIProvider:
                 "prompt_cache_breakpoint": {"mode": "explicit"},
             }
         ]
+
+    @staticmethod
+    def _is_prompt_cache_compatibility_error(error: BadRequestError) -> bool:
+        parameter = openai_error_parameter(error)
+        code = openai_error_field(error, "code")
+        return bool(parameter and "prompt_cache" in parameter.lower()) or code == (
+            "unsupported_parameter"
+        )
 
     async def _with_rate_limit_retry(
         self,

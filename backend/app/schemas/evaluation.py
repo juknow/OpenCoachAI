@@ -1,4 +1,4 @@
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 
 from pydantic import Field, field_validator
 
@@ -11,6 +11,28 @@ from app.schemas.common import (
 )
 
 Difficulty = Literal["easy", "medium", "hard"]
+
+
+def _remove_transport_string_length_keywords(value: object) -> None:
+    if isinstance(value, dict):
+        value.pop("minLength", None)
+        value.pop("maxLength", None)
+        for child in value.values():
+            _remove_transport_string_length_keywords(child)
+    elif isinstance(value, list):
+        for child in value:
+            _remove_transport_string_length_keywords(child)
+
+
+class OpenAIStructuredOutput(ApiModel):
+    @classmethod
+    def model_json_schema(cls, **kwargs: Any) -> dict[str, Any]:
+        schema = super().model_json_schema(**kwargs)
+        # Structured Outputs accepts a JSON Schema subset. Keep deterministic
+        # array counts and numeric ranges in the transport schema, but enforce
+        # string lengths during the server-side Pydantic validation instead.
+        _remove_transport_string_length_keywords(schema)
+        return schema
 
 
 class UserProfile(ApiModel):
@@ -225,7 +247,7 @@ class CompactCorrection(ApiModel):
     explanation: ShortKorean
 
 
-class CompactEvaluationCore(ApiModel):
+class CompactEvaluationCore(OpenAIStructuredOutput):
     level: PracticeLevel
     confidence: Confidence
     confidence_why: ShortKorean
@@ -250,7 +272,7 @@ class CompactEvaluationOutput(CompactEvaluationCore):
     higher_answer: list[ShortEnglish] = Field(min_length=12, max_length=15)
 
 
-class CompactHigherAnswerOutput(ApiModel):
+class CompactHigherAnswerOutput(OpenAIStructuredOutput):
     sentences: list[ShortEnglish] = Field(min_length=12, max_length=15)
 
 
@@ -325,9 +347,7 @@ class EvaluationV2Result(ApiModel):
     summary_korean: str
     dimensions: DimensionEvaluations
     conversational_delivery: EvaluationV2Delivery
-    natural_phrase_suggestions: list[NaturalPhraseSuggestion] = Field(
-        min_length=2, max_length=2
-    )
+    natural_phrase_suggestions: list[NaturalPhraseSuggestion] = Field(min_length=2, max_length=2)
     recommended_vocabulary: list[RecommendedVocabulary] = Field(min_length=3, max_length=3)
     strengths: list[Evidence] = Field(max_length=3)
     primary_level_blocker: Evidence
