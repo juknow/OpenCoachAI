@@ -19,6 +19,8 @@ export type PracticeLevel =
   | 'IH'
   | 'AL'
 
+export type CoachProvider = 'mock' | 'openai'
+
 export type AppView =
   | 'landing'
   | 'profile'
@@ -80,7 +82,8 @@ export interface TranscriptResult {
   fillerCount: number
   repeatedWordCount: number
   metrics: SpeechMetrics
-  isMock: true
+  provider: CoachProvider
+  requestId?: string
 }
 
 export type RubricKey =
@@ -88,19 +91,20 @@ export type RubricKey =
   | 'content'
   | 'discourse'
   | 'timeFrame'
-  | 'grammarVocabulary'
+  | 'grammar'
+  | 'vocabulary'
   | 'fluency'
 
 export interface RubricScore {
   key: RubricKey
   label: string
-  score: 1 | 2 | 3 | 4
+  score: 0 | 1 | 2 | 3 | 4
   feedback: string
 }
 
 export interface ConversationDiagnostic {
   label: string
-  score: 1 | 2 | 3 | 4
+  score: 0 | 1 | 2 | 3 | 4
   feedback: string
 }
 
@@ -111,7 +115,7 @@ export interface ExpressionSuggestion {
 }
 
 export interface VocabularySuggestion {
-  category: 'topic' | 'feeling' | 'action'
+  category: 'topic' | 'feeling' | 'action' | 'connector'
   phrase: string
   meaning: string
   guidance: string
@@ -140,12 +144,20 @@ export interface EvaluationResult {
   vocabulary: VocabularySuggestion[]
   rubrics: RubricScore[]
   strengths: Array<{ title: string; detail: string; evidence: string }>
+  limitations: Array<{ title: string; detail: string; evidence: string }>
   blocker: { title: string; detail: string; evidence: string }
   corrections: Array<{ before: string; after: string; reason: string }>
   improvements: ImprovementAnswer[]
   reusableStructure: string[]
   retryMission: string[]
-  isMock: true
+  provider: CoachProvider
+  metadata?: {
+    requestId: string
+    model: string
+    inputTokens?: number
+    outputTokens?: number
+    cachedInputTokens?: number
+  }
 }
 
 export interface AttemptResult {
@@ -168,7 +180,7 @@ export interface ComparisonResult {
   summary: string
   metrics: ComparisonMetric[]
   missionResults: Array<{ mission: string; achieved: boolean }>
-  isMock: true
+  provider: 'local'
 }
 
 export interface PracticeRecord {
@@ -192,7 +204,9 @@ export interface ActiveSession {
 }
 
 export interface ConnectionState {
-  status: 'disconnected' | 'mock_connected'
+  provider: CoachProvider
+  preference: 'auto' | 'demo'
+  backendStatus: 'checking' | 'ready' | 'unconfigured' | 'unreachable'
 }
 
 export interface CoachState {

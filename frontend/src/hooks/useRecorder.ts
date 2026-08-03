@@ -12,7 +12,6 @@ const chooseMimeType = () => {
     'audio/webm;codecs=opus',
     'audio/webm',
     'audio/mp4',
-    'audio/ogg;codecs=opus',
   ]
   return candidates.find((type) => MediaRecorder.isTypeSupported(type)) ?? ''
 }
@@ -158,9 +157,16 @@ export const useRecorder = (): RecorderController => {
       await refreshDevices()
 
       const mimeType = chooseMimeType()
+      if (!mimeType) {
+        stopStream(stream)
+        streamRef.current = null
+        setError('이 브라우저에서는 지원되는 녹음 파일 형식을 만들 수 없습니다.')
+        setPhase('error')
+        return
+      }
       const recorder = new MediaRecorder(
         stream,
-        mimeType ? { mimeType } : undefined,
+        { mimeType, audioBitsPerSecond: 48_000 },
       )
       recorderRef.current = recorder
       chunksRef.current = []

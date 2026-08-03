@@ -95,7 +95,7 @@ export function RecorderPanel({ recorder, onSubmit }: RecorderPanelProps) {
       </div>
 
       <button className="button submit-button" type="button" disabled={!canSubmit} onClick={onSubmit}>
-        답변 제출하고 Mock 음성 전사하기 <span aria-hidden="true">→</span>
+        답변 제출하고 음성 전사하기 <span aria-hidden="true">→</span>
       </button>
     </section>
   )

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { updateTranscriptText } from '../services/mockCoachService.ts'
+import { updateTranscriptText } from '../services/transcriptMetricsService.ts'
 import type { ActiveSession, TranscriptResult } from '../types/coach.ts'
 
 interface TranscriptReviewPageProps {
@@ -26,7 +26,7 @@ export function TranscriptReviewPage({
     <main className="transcript-page page-shell">
       <button className="back-button" type="button" onClick={onBack}>← 다시 녹음하기</button>
       <header className="page-intro centered">
-        <span className="eyebrow">MOCK TRANSCRIPT CHECK</span>
+        <span className="eyebrow">{editedTranscript.provider === 'openai' ? 'API' : 'DEMO'} TRANSCRIPT CHECK</span>
         <h1>전사문을 확인해 주세요</h1>
         <p>음성 인식이 잘못된 부분만 고쳐 주세요. 수정된 텍스트를 기준으로 평가합니다.</p>
       </header>
@@ -49,12 +49,12 @@ export function TranscriptReviewPage({
           <span>♩ 긴 멈춤 {editedTranscript.metrics.longPauses}회</span>
         </div>
         <p className="transcript-note">
-          Mock 전사는 um/uh, 반복한 단어, 중간에 끊긴 문장, 잘못된 문법과 어휘도
-          그대로 포함합니다. 음성 흐름 지표는 실제 녹음 파형에서 별도로 추정합니다.
+          전사 결과는 um/uh, 반복한 단어, 중간에 끊긴 문장, 잘못된 문법과 어휘를
+          임의로 고치지 않습니다. 음성 흐름 지표는 실제 녹음 파형에서 별도로 추정합니다.
         </p>
         <div className="card-actions">
           <button className="button secondary" type="button" onClick={onBack}>다시 녹음</button>
-          <button className="button primary" type="button" disabled={!editedText.trim()} onClick={() => onEvaluate(editedTranscript)}>Mock AI 피드백 받기 ✣</button>
+          <button className="button primary" type="button" disabled={!editedText.trim()} onClick={() => onEvaluate(editedTranscript)}>AI 피드백 받기 ✣</button>
         </div>
       </section>
     </main>

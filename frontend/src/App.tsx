@@ -1,28 +1,9 @@
-import { useEffect, useReducer, useState } from 'react'
+import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
 import './App.css'
-import { AppHeader } from './components/AppHeader.tsx'
 import { ApiConnectionDialog } from './components/ApiConnectionDialog.tsx'
+import { AppHeader } from './components/AppHeader.tsx'
 import { ProcessingScreen } from './components/ProcessingScreen.tsx'
 import { getRandomQuestion } from './data/questions.ts'
-import { coachService } from './services/coachProvider.ts'
-import {
-  loadStoredCoachState,
-  saveConnection,
-  saveHistory,
-  saveProfile,
-} from './services/storageService.ts'
-import {
-  coachReducer,
-  createInitialCoachState,
-} from './state/coachReducer.ts'
-import type {
-  AttemptResult,
-  PracticeProfile,
-  ProcessingStage,
-  QuestionType,
-  RecordingArtifact,
-  TranscriptResult,
-} from './types/coach.ts'
 import { FeedbackPage } from './pages/FeedbackPage.tsx'
 import { HistoryPage } from './pages/HistoryPage.tsx'
 import { LandingPage } from './pages/LandingPage.tsx'
@@ -30,6 +11,25 @@ import { PracticeHomePage } from './pages/PracticeHomePage.tsx'
 import { PracticePage } from './pages/PracticePage.tsx'
 import { ProfileSetupPage } from './pages/ProfileSetupPage.tsx'
 import { TranscriptReviewPage } from './pages/TranscriptReviewPage.tsx'
+import { checkBackendConnection } from './services/apiClient.ts'
+import { getCoachService } from './services/coachProvider.ts'
+import { compareAttempts } from './services/comparisonService.ts'
+import {
+  loadStoredCoachState,
+  saveConnection,
+  saveHistory,
+  saveProfile,
+} from './services/storageService.ts'
+import { coachReducer, createInitialCoachState } from './state/coachReducer.ts'
+import type {
+  AttemptResult,
+  ConnectionState,
+  PracticeProfile,
+  ProcessingStage,
+  QuestionType,
+  RecordingArtifact,
+  TranscriptResult,
+} from './types/coach.ts'
 
 const createSessionId = () =>
   window.crypto.randomUUID?.() ?? `practice-${Date.now()}`
@@ -44,10 +44,32 @@ function App() {
   const [processingStage, setProcessingStage] =
     useState<ProcessingStage>('upload')
   const [operationError, setOperationError] = useState<string | null>(null)
+  const connectionCheckId = useRef(0)
+
+  const refreshConnection = useCallback(async (preference: ConnectionState['preference']) => {
+    const checkId = ++connectionCheckId.current
+    dispatch({
+      type: 'SET_CONNECTION',
+      connection: { provider: 'mock', preference, backendStatus: 'checking' },
+    })
+    const backendStatus = await checkBackendConnection()
+    if (checkId !== connectionCheckId.current) return
+    dispatch({
+      type: 'SET_CONNECTION',
+      connection: {
+        preference,
+        backendStatus,
+        provider: backendStatus === 'ready' && preference === 'auto' ? 'openai' : 'mock',
+      },
+    })
+  }, [])
 
   useEffect(() => saveProfile(state.profile), [state.profile])
   useEffect(() => saveConnection(state.connection), [state.connection])
   useEffect(() => saveHistory(state.history), [state.history])
+  useEffect(() => {
+    void refreshConnection(state.connection.preference)
+  }, [refreshConnection, state.connection.preference])
 
   const goHome = () => {
     dispatch({ type: 'NAVIGATE', view: state.profile ? 'home' : 'landing' })
@@ -64,11 +86,12 @@ function App() {
 
   const submitRecording = async (artifact: RecordingArtifact) => {
     if (!state.session) return
+    const service = getCoachService(state.connection.provider)
     setOperationError(null)
     setProcessingStage('upload')
     dispatch({ type: 'NAVIGATE', view: 'processing' })
     try {
-      const transcript = await coachService.transcribe(
+      const transcript = await service.transcribe(
         {
           audio: artifact.blob,
           question: state.session.question,
@@ -78,24 +101,31 @@ function App() {
         setProcessingStage,
       )
       dispatch({ type: 'SET_TRANSCRIPT', transcript })
-    } catch {
-      setOperationError('Mock 전사 처리에 실패했습니다. 녹음을 다시 제출해 주세요.')
+    } catch (error) {
+      setOperationError(
+        error instanceof Error
+          ? error.message
+          : '음성 전사에 실패했습니다. 녹음을 다시 제출해 주세요.',
+      )
       dispatch({ type: 'NAVIGATE', view: 'practice' })
     }
   }
 
   const evaluateTranscript = async (transcript: TranscriptResult) => {
     if (!state.session || !state.profile) return
+    const service = getCoachService(state.connection.provider)
     setOperationError(null)
     setProcessingStage('evaluate')
     dispatch({ type: 'NAVIGATE', view: 'processing' })
     try {
-      const evaluation = await coachService.evaluate(
+      const evaluation = await service.evaluate(
         {
           question: state.session.question,
           profile: state.profile,
           transcript,
           attempt: state.session.attempt,
+          previousAttempt:
+            state.session.attempt === 2 ? state.session.firstAttempt : undefined,
         },
         setProcessingStage,
       )
@@ -107,17 +137,21 @@ function App() {
       }
 
       if (state.session.attempt === 2 && state.session.firstAttempt) {
-        const comparison = await coachService.compare({
-          firstAttempt: state.session.firstAttempt,
-          retryAttempt: result,
-          missions: state.session.firstAttempt.evaluation.retryMission,
-        })
+        const comparison = compareAttempts(
+          state.session.firstAttempt,
+          result,
+          state.session.firstAttempt.evaluation.retryMission,
+        )
         dispatch({ type: 'COMPLETE_ATTEMPT', result, comparison })
       } else {
         dispatch({ type: 'COMPLETE_ATTEMPT', result })
       }
-    } catch {
-      setOperationError('Mock 평가 처리에 실패했습니다. 전사문을 확인하고 다시 시도해 주세요.')
+    } catch (error) {
+      setOperationError(
+        error instanceof Error
+          ? error.message
+          : '평가 처리에 실패했습니다. 전사문을 확인하고 다시 시도해 주세요.',
+      )
       dispatch({ type: 'SET_TRANSCRIPT', transcript })
     }
   }
@@ -173,7 +207,12 @@ function App() {
           />
         ) : null
       case 'processing':
-        return <ProcessingScreen stage={processingStage} />
+        return (
+          <ProcessingScreen
+            stage={processingStage}
+            provider={state.connection.provider}
+          />
+        )
       case 'transcript':
         return state.session ? (
           <TranscriptReviewPage
@@ -224,22 +263,31 @@ function App() {
       {renderView()}
       {connectionOpen && (
         <ApiConnectionDialog
-          connected={state.connection.status === 'mock_connected'}
+          connection={state.connection}
           onClose={() => setConnectionOpen(false)}
-          onConnect={() => {
+          onUseApi={() => {
             dispatch({
               type: 'SET_CONNECTION',
-              connection: { status: 'mock_connected' },
+              connection: {
+                provider: 'openai',
+                preference: 'auto',
+                backendStatus: 'ready',
+              },
             })
             setConnectionOpen(false)
           }}
-          onDisconnect={() => {
+          onUseDemo={() => {
             dispatch({
               type: 'SET_CONNECTION',
-              connection: { status: 'disconnected' },
+              connection: {
+                ...state.connection,
+                provider: 'mock',
+                preference: 'demo',
+              },
             })
             setConnectionOpen(false)
           }}
+          onRefresh={() => void refreshConnection(state.connection.preference)}
         />
       )}
     </div>

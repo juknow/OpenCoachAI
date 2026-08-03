@@ -17,7 +17,8 @@ backend/**/*.pyc
 backend/.pytest_cache/
 backend/.mypy_cache/
 backend/.ruff_cache/
-backend/.env
+backend/.env*
+!backend/.env.example
 
 # ==============================
 # Local AI models

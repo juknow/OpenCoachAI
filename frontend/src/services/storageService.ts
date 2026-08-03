@@ -5,7 +5,7 @@ import type {
 } from '../types/coach.ts'
 
 const PROFILE_KEY = 'opic-coach:v1:profile'
-const CONNECTION_KEY = 'opic-coach:v1:connection'
+const CONNECTION_KEY = 'opic-coach:v2:provider-preference'
 const HISTORY_KEY = 'opic-coach:v1:history'
 
 const read = <T>(key: string, fallback: T): T => {
@@ -33,9 +33,13 @@ export interface StoredCoachState {
 
 export const loadStoredCoachState = (): StoredCoachState => ({
   profile: read<PracticeProfile | null>(PROFILE_KEY, null),
-  connection: read<ConnectionState>(CONNECTION_KEY, {
-    status: 'disconnected',
-  }),
+  connection: {
+    provider: 'mock',
+    preference: read<{ preference: 'auto' | 'demo' }>(CONNECTION_KEY, {
+      preference: 'auto',
+    }).preference,
+    backendStatus: 'checking',
+  },
   history: read<PracticeRecord[]>(HISTORY_KEY, []),
 })
 
@@ -45,7 +49,7 @@ export const saveProfile = (profile: PracticeProfile | null) => {
 }
 
 export const saveConnection = (connection: ConnectionState) => {
-  write(CONNECTION_KEY, connection)
+  write(CONNECTION_KEY, { preference: connection.preference })
 }
 
 export const saveHistory = (history: PracticeRecord[]) => {

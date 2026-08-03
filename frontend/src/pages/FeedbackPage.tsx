@@ -82,7 +82,7 @@ export function FeedbackPage({ session, onHome, onRetry }: FeedbackPageProps) {
   return (
     <main className="feedback-page page-shell">
       <header className="feedback-intro">
-        <span className="eyebrow success">✓ ANALYSIS COMPLETE · MOCK</span>
+        <span className="eyebrow success">✓ ANALYSIS COMPLETE · {evaluation.provider === 'openai' ? 'OPENAI API' : 'DEMO'}</span>
         <h1>{session.retryAttempt ? '재답변 비교 피드백' : '첫 번째 답변 피드백'}</h1>
         <p><span className={`type-badge ${meta.accent}`}>{meta.label}</span> {session.question.prompt}</p>
         <button className="button secondary" type="button" onClick={onHome}>연습 홈</button>
@@ -125,7 +125,7 @@ export function FeedbackPage({ session, onHome, onRetry }: FeedbackPageProps) {
             <div className="vocabulary-grid">
               {evaluation.vocabulary.map((item) => <article key={item.phrase}><header><span>{item.category}</span><TtsButton text={item.phrase} onSpeak={speech.speak} /></header><strong>{item.phrase}</strong><b>{item.meaning}</b><p>{item.guidance}</p><blockquote>{item.example}</blockquote></article>)}
             </div>
-            <p className="section-note">내 답변의 주제와 표현 수준을 기준으로 고른 mock collocation이에요. 다음 답변에는 이 중 1~2개만 사용해 보세요.</p>
+            <p className="section-note">내 답변의 주제와 표현 수준을 기준으로 고른 collocation이에요. 다음 답변에는 이 중 1~2개만 사용해 보세요.</p>
           </section>
 
           <section className="feedback-section">

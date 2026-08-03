@@ -21,7 +21,13 @@ export function AppHeader({
   onHistory,
   onConnection,
 }: AppHeaderProps) {
-  const connected = connection.status === 'mock_connected'
+  const connected = connection.provider === 'openai'
+  const connectionLabel =
+    connection.backendStatus === 'checking'
+      ? '연결 확인 중'
+      : connected
+        ? 'OpenAI API Mode'
+        : 'Demo Mode'
 
   return (
     <header className="app-header">
@@ -50,7 +56,7 @@ export function AppHeader({
           onClick={onConnection}
         >
           <span aria-hidden="true">⚿</span>
-          {connected ? 'Mock AI 연결됨' : 'AI 연결 필요'}
+          {connectionLabel}
         </button>
         {profile && <span className="target-level">◎ 목표 {profile.targetLevel}</span>}
       </div>

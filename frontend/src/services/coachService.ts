@@ -1,6 +1,5 @@
 import type {
   AttemptResult,
-  ComparisonResult,
   EvaluationResult,
   PracticeProfile,
   ProcessingStage,
@@ -23,12 +22,7 @@ export interface EvaluationInput {
   profile: PracticeProfile
   transcript: TranscriptResult
   attempt: 1 | 2
-}
-
-export interface ComparisonInput {
-  firstAttempt: AttemptResult
-  retryAttempt: AttemptResult
-  missions: string[]
+  previousAttempt?: AttemptResult
 }
 
 export interface CoachService {
@@ -40,5 +34,4 @@ export interface CoachService {
     input: EvaluationInput,
     onProgress?: ProgressListener,
   ): Promise<EvaluationResult>
-  compare(input: ComparisonInput): Promise<ComparisonResult>
 }

@@ -1,0 +1,55 @@
+from collections.abc import AsyncIterator
+from dataclasses import dataclass, field
+
+import pytest
+from fastapi.testclient import TestClient
+
+from app.api.dependencies import get_ai_provider
+from app.config import Settings, get_settings
+from app.main import create_app
+from app.providers.base import ProviderEvaluation, ProviderTranscription
+from app.schemas.common import UsageMetadata
+from tests.helpers import evaluation_output
+
+
+@dataclass
+class FakeProvider:
+    transcription_text: str = "Um, I I went there yesterday."
+    transcription_calls: list[dict[str, object]] = field(default_factory=list)
+    evaluation_calls: list[dict[str, object]] = field(default_factory=list)
+
+    async def transcribe(self, **kwargs) -> ProviderTranscription:
+        self.transcription_calls.append(kwargs)
+        return ProviderTranscription(text=self.transcription_text, model="gpt-4o-mini-transcribe")
+
+    async def evaluate(self, **kwargs) -> ProviderEvaluation:
+        self.evaluation_calls.append(kwargs)
+        return ProviderEvaluation(
+            output=evaluation_output(),
+            model="gpt-5.6-luna",
+            usage=UsageMetadata(input_tokens=120, output_tokens=340, cached_input_tokens=20),
+        )
+
+
+@pytest.fixture
+def fake_provider() -> FakeProvider:
+    return FakeProvider()
+
+
+@pytest.fixture
+def configured_settings() -> Settings:
+    return Settings(
+        _env_file=None,
+        openai_api_key="test-key-not-a-real-secret",
+        max_audio_bytes=900_000,
+    )
+
+
+@pytest.fixture
+def client(fake_provider: FakeProvider, configured_settings: Settings) -> AsyncIterator[TestClient]:
+    app = create_app()
+    app.dependency_overrides[get_ai_provider] = lambda: fake_provider
+    app.dependency_overrides[get_settings] = lambda: configured_settings
+    with TestClient(app, raise_server_exceptions=False) as test_client:
+        yield test_client
+    app.dependency_overrides.clear()

@@ -1,8 +1,5 @@
 import { MOCK_FEEDBACK_TEMPLATES } from '../data/mockFeedbackTemplates.ts'
 import type {
-  AttemptResult,
-  ComparisonMetric,
-  ComparisonResult,
   EvaluationResult,
   ImprovementAnswer,
   PracticeLevel,
@@ -11,36 +8,21 @@ import type {
 } from '../types/coach.ts'
 import type {
   CoachService,
-  ComparisonInput,
   EvaluationInput,
   ProgressListener,
   TranscriptionInput,
 } from './coachService.ts'
+import {
+  countSentences,
+  countWords,
+  createTranscriptResult,
+} from './transcriptMetricsService.ts'
 
 const wait = (milliseconds: number) =>
   new Promise<void>((resolve) => window.setTimeout(resolve, milliseconds))
 
-export const countWords = (text: string) =>
-  text.trim() ? text.trim().split(/\s+/).length : 0
-
-export const countSentences = (text: string) => {
-  const matches = text.trim().match(/[^.!?]+[.!?]+|[^.!?]+$/g)
-  return matches?.filter((sentence) => sentence.trim()).length ?? 0
-}
-
 const interpolate = (text: string, topic: string) =>
   text.replaceAll('{topic}', topic)
-
-const countFillers = (text: string) =>
-  text.match(/\b(?:um+|uh+|er+|ah+)\b/gi)?.length ?? 0
-
-const countRepeatedWords = (text: string) => {
-  const words = text.toLowerCase().match(/[a-z']+/g) ?? []
-  return words.reduce(
-    (count, word, index) => count + (index > 0 && words[index - 1] === word ? 1 : 0),
-    0,
-  )
-}
 
 const asScore = (value: number): 1 | 2 | 3 | 4 =>
   Math.max(1, Math.min(4, Math.round(value))) as 1 | 2 | 3 | 4
@@ -76,7 +58,8 @@ const buildRubrics = (
     ['content', 'Content & specificity', 0],
     ['discourse', 'Discourse & organization', -0.1],
     ['timeFrame', 'Time-frame control', -0.2],
-    ['grammarVocabulary', 'Grammar & vocabulary', 0],
+    ['grammar', 'Grammar control', 0],
+    ['vocabulary', 'Vocabulary range', 0],
     ['fluency', 'Fluency & comprehensibility', -0.1],
   ]
 
@@ -100,28 +83,8 @@ const buildImprovement = (
   }
 }
 
-const transcriptWithEditedText = (
-  transcript: TranscriptResult,
-  editedText: string,
-): TranscriptResult => ({
-  ...transcript,
-  editedText,
-  wordCount: countWords(editedText),
-  fillerCount: countFillers(editedText),
-  repeatedWordCount: countRepeatedWords(editedText),
-  wpm: Math.round(
-    countWords(editedText) / Math.max(transcript.metrics.durationSeconds / 60, 1 / 60),
-  ),
-})
-
-export const updateTranscriptText = transcriptWithEditedText
-
-const averageRubric = (attempt: AttemptResult) =>
-  attempt.evaluation.rubrics.reduce((total, rubric) => total + rubric.score, 0) /
-  attempt.evaluation.rubrics.length
-
-const directionFor = (before: number, after: number): ComparisonMetric['direction'] =>
-  after > before ? 'up' : after < before ? 'down' : 'same'
+const feedbackFor = (score: RubricScore['score']) =>
+  score === 0 ? '평가할 수 있는 발화 증거가 없습니다.' : scoreFeedback[score]
 
 export const mockCoachService: CoachService = {
   async transcribe(
@@ -138,20 +101,7 @@ export const mockCoachService: CoachService = {
       input.attempt === 1 ? template.transcript.first : template.transcript.retry,
       input.question.topic,
     )
-    const wordCount = countWords(rawText)
-
-    return {
-      rawText,
-      editedText: rawText,
-      wordCount,
-      wpm: Math.round(
-        wordCount / Math.max(input.metrics.durationSeconds / 60, 1 / 60),
-      ),
-      fillerCount: countFillers(rawText),
-      repeatedWordCount: countRepeatedWords(rawText),
-      metrics: input.metrics,
-      isMock: true,
-    }
+    return createTranscriptResult(rawText, input.metrics, 'mock')
   },
 
   async evaluate(
@@ -180,9 +130,9 @@ export const mockCoachService: CoachService = {
           : template.headline,
       summary: template.summary,
       diagnostics: [
-        { label: '유창성', score: rubrics[5]?.score ?? 1, feedback: scoreFeedback[rubrics[5]?.score ?? 1] },
-        { label: '정확성', score: rubrics[4]?.score ?? 1, feedback: scoreFeedback[rubrics[4]?.score ?? 1] },
-        { label: '자연스러움', score: rubrics[2]?.score ?? 1, feedback: scoreFeedback[rubrics[2]?.score ?? 1] },
+        { label: '유창성', score: rubrics[6]?.score ?? 1, feedback: feedbackFor(rubrics[6]?.score ?? 1) },
+        { label: '정확성', score: rubrics[4]?.score ?? 1, feedback: feedbackFor(rubrics[4]?.score ?? 1) },
+        { label: '자연스러움', score: rubrics[2]?.score ?? 1, feedback: feedbackFor(rubrics[2]?.score ?? 1) },
       ],
       mainPointLabel: template.mainPointLabel,
       mainPointFeedback: template.mainPointFeedback,
@@ -201,6 +151,13 @@ export const mockCoachService: CoachService = {
         { title: '주제 응답', detail: '질문과 관련된 중심 소재를 제시했습니다.', evidence: input.transcript.editedText.split(/[.!?]/)[0]?.trim() || '응답 시작' },
         { title: '의사소통 시도', detail: '완벽하지 않아도 답변을 이어 가려는 흐름이 있습니다.', evidence: input.transcript.editedText.split(/[.!?]/)[1]?.trim() || '답변을 계속 이어 감' },
       ],
+      limitations: [
+        {
+          title: template.blocker.title,
+          detail: template.blocker.detail,
+          evidence: input.transcript.editedText.slice(0, 150),
+        },
+      ],
       blocker: {
         ...template.blocker,
         evidence: input.transcript.editedText.slice(0, 150),
@@ -215,35 +172,7 @@ export const mockCoachService: CoachService = {
       ],
       reusableStructure: template.reusableStructure,
       retryMission: template.retryMission,
-      isMock: true,
-    }
-  },
-
-  async compare(input: ComparisonInput): Promise<ComparisonResult> {
-    await wait(350)
-    const beforeWords = input.firstAttempt.transcript.wordCount
-    const afterWords = input.retryAttempt.transcript.wordCount
-    const beforeRubric = averageRubric(input.firstAttempt)
-    const afterRubric = averageRubric(input.retryAttempt)
-
-    return {
-      levelBefore: input.firstAttempt.evaluation.estimatedLevel,
-      levelAfter: input.retryAttempt.evaluation.estimatedLevel,
-      summary:
-        afterWords > beforeWords
-          ? '재답변에서 발화량과 구조가 개선되었습니다. 다음에는 구체적인 예를 한 가지 더 추가해 보세요.'
-          : '핵심 구조는 유지했지만 발화량 변화가 크지 않습니다. Retry Mission을 한 항목씩 다시 적용해 보세요.',
-      metrics: [
-        { label: '단어 수', before: `${beforeWords}`, after: `${afterWords}`, direction: directionFor(beforeWords, afterWords) },
-        { label: 'WPM', before: `${input.firstAttempt.transcript.wpm}`, after: `${input.retryAttempt.transcript.wpm}`, direction: directionFor(input.firstAttempt.transcript.wpm, input.retryAttempt.transcript.wpm) },
-        { label: '평균 평가', before: beforeRubric.toFixed(1), after: afterRubric.toFixed(1), direction: directionFor(beforeRubric, afterRubric) },
-        { label: '긴 멈춤', before: `${input.firstAttempt.transcript.metrics.longPauses}`, after: `${input.retryAttempt.transcript.metrics.longPauses}`, direction: directionFor(input.retryAttempt.transcript.metrics.longPauses, input.firstAttempt.transcript.metrics.longPauses) },
-      ],
-      missionResults: input.missions.map((mission, index) => ({
-        mission,
-        achieved: index === 0 ? afterWords >= beforeWords : afterWords > beforeWords,
-      })),
-      isMock: true,
+      provider: 'mock',
     }
   },
 }
