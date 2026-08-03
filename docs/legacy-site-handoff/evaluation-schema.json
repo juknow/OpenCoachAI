@@ -1,0 +1,312 @@
+{
+  "type": "json_schema",
+  "json_schema": {
+    "name": "opic_practice_evaluation",
+    "strict": true,
+    "schema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "mostLikelyLevel": {
+          "type": "string",
+          "enum": ["NL", "NM", "NH", "IL", "IM1", "IM2", "IM3", "IH", "AL"]
+        },
+        "confidence": {
+          "type": "string",
+          "enum": ["low", "medium", "high"]
+        },
+        "confidenceReason": { "type": "string" },
+        "summaryKorean": { "type": "string" },
+        "dimensions": {
+          "type": "object",
+          "properties": {
+            "taskCompletion": {
+              "type": "object",
+              "properties": {
+                "score": { "type": "integer", "minimum": 0, "maximum": 4 },
+                "reason": { "type": "string" }
+              },
+              "required": ["score", "reason"],
+              "additionalProperties": false
+            },
+            "contentSpecificity": {
+              "type": "object",
+              "properties": {
+                "score": { "type": "integer", "minimum": 0, "maximum": 4 },
+                "reason": { "type": "string" }
+              },
+              "required": ["score", "reason"],
+              "additionalProperties": false
+            },
+            "discourseOrganization": {
+              "type": "object",
+              "properties": {
+                "score": { "type": "integer", "minimum": 0, "maximum": 4 },
+                "reason": { "type": "string" }
+              },
+              "required": ["score", "reason"],
+              "additionalProperties": false
+            },
+            "timeFrameControl": {
+              "type": "object",
+              "properties": {
+                "score": { "type": "integer", "minimum": 0, "maximum": 4 },
+                "reason": { "type": "string" }
+              },
+              "required": ["score", "reason"],
+              "additionalProperties": false
+            },
+            "grammarControl": {
+              "type": "object",
+              "properties": {
+                "score": { "type": "integer", "minimum": 0, "maximum": 4 },
+                "reason": { "type": "string" }
+              },
+              "required": ["score", "reason"],
+              "additionalProperties": false
+            },
+            "vocabularyRange": {
+              "type": "object",
+              "properties": {
+                "score": { "type": "integer", "minimum": 0, "maximum": 4 },
+                "reason": { "type": "string" }
+              },
+              "required": ["score", "reason"],
+              "additionalProperties": false
+            },
+            "fluencyComprehensibility": {
+              "type": "object",
+              "properties": {
+                "score": { "type": "integer", "minimum": 0, "maximum": 4 },
+                "reason": { "type": "string" }
+              },
+              "required": ["score", "reason"],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "taskCompletion",
+            "contentSpecificity",
+            "discourseOrganization",
+            "timeFrameControl",
+            "grammarControl",
+            "vocabularyRange",
+            "fluencyComprehensibility"
+          ],
+          "additionalProperties": false
+        },
+        "conversationalDelivery": {
+          "type": "object",
+          "properties": {
+            "fluency": {
+              "type": "object",
+              "properties": {
+                "score": { "type": "integer", "minimum": 0, "maximum": 4 },
+                "reason": { "type": "string" }
+              },
+              "required": ["score", "reason"],
+              "additionalProperties": false
+            },
+            "accuracy": {
+              "type": "object",
+              "properties": {
+                "score": { "type": "integer", "minimum": 0, "maximum": 4 },
+                "reason": { "type": "string" }
+              },
+              "required": ["score", "reason"],
+              "additionalProperties": false
+            },
+            "naturalness": {
+              "type": "object",
+              "properties": {
+                "score": { "type": "integer", "minimum": 0, "maximum": 4 },
+                "reason": { "type": "string" }
+              },
+              "required": ["score", "reason"],
+              "additionalProperties": false
+            },
+            "mainPoint": {
+              "type": "object",
+              "properties": {
+                "status": {
+                  "type": "string",
+                  "enum": ["clear_early", "late", "missing", "uncertain"]
+                },
+                "feedbackKorean": { "type": "string" }
+              },
+              "required": ["status", "feedbackKorean"],
+              "additionalProperties": false
+            },
+            "feelingLanguage": {
+              "type": "object",
+              "properties": {
+                "expressions": {
+                  "maxItems": 4,
+                  "type": "array",
+                  "items": { "type": "string" }
+                },
+                "feedbackKorean": { "type": "string" }
+              },
+              "required": ["expressions", "feedbackKorean"],
+              "additionalProperties": false
+            },
+            "discourseMarkers": {
+              "type": "object",
+              "properties": {
+                "functional": {
+                  "maxItems": 4,
+                  "type": "array",
+                  "items": { "type": "string" }
+                },
+                "disruptive": {
+                  "maxItems": 4,
+                  "type": "array",
+                  "items": { "type": "string" }
+                },
+                "feedbackKorean": { "type": "string" }
+              },
+              "required": ["functional", "disruptive", "feedbackKorean"],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "fluency",
+            "accuracy",
+            "naturalness",
+            "mainPoint",
+            "feelingLanguage",
+            "discourseMarkers"
+          ],
+          "additionalProperties": false
+        },
+        "naturalPhraseSuggestions": {
+          "minItems": 2,
+          "maxItems": 2,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "contextKorean": { "type": "string" },
+              "phraseEnglish": { "type": "string" },
+              "usageKorean": { "type": "string" }
+            },
+            "required": ["contextKorean", "phraseEnglish", "usageKorean"],
+            "additionalProperties": false
+          }
+        },
+        "recommendedVocabulary": {
+          "minItems": 3,
+          "maxItems": 3,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "category": {
+                "type": "string",
+                "enum": ["topic", "feeling", "action", "connector"]
+              },
+              "wordOrPhraseEnglish": { "type": "string" },
+              "meaningKorean": { "type": "string" },
+              "whyRecommendedKorean": { "type": "string" },
+              "exampleSentenceEnglish": { "type": "string" }
+            },
+            "required": [
+              "category",
+              "wordOrPhraseEnglish",
+              "meaningKorean",
+              "whyRecommendedKorean",
+              "exampleSentenceEnglish"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "strengths": {
+          "minItems": 2,
+          "maxItems": 2,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "title": { "type": "string" },
+              "explanationKorean": { "type": "string" },
+              "evidenceFromTranscript": { "type": "string" }
+            },
+            "required": ["title", "explanationKorean", "evidenceFromTranscript"],
+            "additionalProperties": false
+          }
+        },
+        "primaryLevelBlocker": {
+          "type": "object",
+          "properties": {
+            "title": { "type": "string" },
+            "explanationKorean": { "type": "string" },
+            "evidenceFromTranscript": { "type": "string" }
+          },
+          "required": ["title", "explanationKorean", "evidenceFromTranscript"],
+          "additionalProperties": false
+        },
+        "corrections": {
+          "maxItems": 3,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "original": { "type": "string" },
+              "corrected": { "type": "string" },
+              "explanationKorean": { "type": "string" }
+            },
+            "required": ["original", "corrected", "explanationKorean"],
+            "additionalProperties": false
+          }
+        },
+        "retryMission": {
+          "minItems": 3,
+          "maxItems": 3,
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "recommendedNextQuestionType": {
+          "type": "string",
+          "enum": [
+            "description",
+            "routine",
+            "past_experience",
+            "comparison_change",
+            "role_play",
+            "problem_solution"
+          ]
+        },
+        "minimalCorrectionSentences": {
+          "minItems": 10,
+          "maxItems": 12,
+          "type": "array",
+          "items": { "type": "string", "minLength": 3, "maxLength": 240 }
+        },
+        "nextLevelSentences": {
+          "minItems": 12,
+          "maxItems": 15,
+          "type": "array",
+          "items": { "type": "string", "minLength": 3, "maxLength": 240 }
+        }
+      },
+      "required": [
+        "mostLikelyLevel",
+        "confidence",
+        "confidenceReason",
+        "summaryKorean",
+        "dimensions",
+        "conversationalDelivery",
+        "naturalPhraseSuggestions",
+        "recommendedVocabulary",
+        "strengths",
+        "primaryLevelBlocker",
+        "corrections",
+        "retryMission",
+        "recommendedNextQuestionType",
+        "minimalCorrectionSentences",
+        "nextLevelSentences"
+      ],
+      "additionalProperties": false
+    }
+  }
+}
