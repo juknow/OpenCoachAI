@@ -2,7 +2,7 @@ from pathlib import Path
 
 from app.config import Settings
 from app.errors import ApiProblem
-from app.providers.base import AiProvider, ProviderTranscription
+from app.providers.base import ProviderTranscription, TranscriptionProvider
 
 SUPPORTED_MIME_TYPES = {
     "audio/webm": ".webm",
@@ -34,7 +34,7 @@ def signature_matches(data: bytes, mime_type: str) -> bool:
 
 
 class TranscriptionService:
-    def __init__(self, provider: AiProvider, settings: Settings, prompt: str) -> None:
+    def __init__(self, provider: TranscriptionProvider, settings: Settings, prompt: str) -> None:
         self._provider = provider
         self._settings = settings
         self._prompt = prompt

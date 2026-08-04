@@ -61,36 +61,40 @@ const repeatedPhrases = (text: string) => {
 }
 
 export const createTranscriptResult = (
-  rawText: string,
+  rawTranscript: string,
   metrics: SpeechMetrics,
   provider: CoachProvider,
   requestId?: string,
+  serverMetrics?: ApiSpeechMetrics,
+  transcriptionModel?: string,
 ): TranscriptResult => {
-  const wordCount = countWords(rawText)
+  const wordCount = countWords(rawTranscript)
   return {
-    rawText,
-    editedText: rawText,
+    rawTranscript,
+    confirmedTranscript: rawTranscript,
     wordCount,
     wpm: Math.round(wordCount / Math.max(metrics.durationSeconds / 60, 1 / 60)),
-    fillerCount: countFillers(rawText),
-    repeatedWordCount: countRepeatedWords(rawText),
+    fillerCount: countFillers(rawTranscript),
+    repeatedWordCount: countRepeatedWords(rawTranscript),
     metrics,
     provider,
     requestId,
+    serverMetrics,
+    transcriptionModel,
   }
 }
 
 export const updateTranscriptText = (
   transcript: TranscriptResult,
-  editedText: string,
+  confirmedTranscript: string,
 ): TranscriptResult => {
-  const wordCount = countWords(editedText)
+  const wordCount = countWords(confirmedTranscript)
   return {
     ...transcript,
-    editedText,
+    confirmedTranscript,
     wordCount,
-    fillerCount: countFillers(editedText),
-    repeatedWordCount: countRepeatedWords(editedText),
+    fillerCount: countFillers(confirmedTranscript),
+    repeatedWordCount: countRepeatedWords(confirmedTranscript),
     wpm: Math.round(
       wordCount / Math.max(transcript.metrics.durationSeconds / 60, 1 / 60),
     ),
@@ -98,9 +102,10 @@ export const updateTranscriptText = (
 }
 
 export const toApiSpeechMetrics = (transcript: TranscriptResult): ApiSpeechMetrics => {
-  const text = transcript.editedText
+  const text = transcript.confirmedTranscript
   const wordCount = countWords(text)
   const openingWordCount = Math.max(1, Math.round(transcript.wpm / 3))
+  const timedAcoustic = transcript.serverMetrics?.acoustic
   return {
     durationSeconds: transcript.metrics.durationSeconds,
     wordCount,
@@ -113,12 +118,24 @@ export const toApiSpeechMetrics = (transcript: TranscriptResult): ApiSpeechMetri
       : 0,
     opening20SecondEstimate: text.split(/\s+/).slice(0, openingWordCount).join(' '),
     acoustic: {
-      initialResponseDelaySeconds: transcript.metrics.initialDelaySeconds,
-      hesitationPauseCount: transcript.metrics.shortPauses,
-      longPauseCount: transcript.metrics.longPauses,
-      silenceRatio: transcript.metrics.silenceRatio,
+      initialResponseDelaySeconds:
+        timedAcoustic?.initialResponseDelaySeconds ?? transcript.metrics.initialDelaySeconds,
+      hesitationPauseCount:
+        timedAcoustic?.hesitationPauseCount ?? transcript.metrics.shortPauses,
+      longPauseCount: timedAcoustic?.longPauseCount ?? transcript.metrics.longPauses,
+      silenceRatio: timedAcoustic?.silenceRatio ?? transcript.metrics.silenceRatio,
       energyVariationIndex: transcript.metrics.energyVariation,
-      confidence: transcript.metrics.confidence,
+      confidence: timedAcoustic?.confidence ?? transcript.metrics.confidence,
+      averageHesitationPauseSeconds:
+        timedAcoustic?.averageHesitationPauseSeconds,
+      averageLongPauseSeconds: timedAcoustic?.averageLongPauseSeconds,
     },
+    sentenceCount: countSentences(text),
+    averageSentenceLength: Number(
+      (wordCount / Math.max(countSentences(text), 1)).toFixed(1),
+    ),
+    repeatedWordRatio: Number(
+      ((countRepeatedWords(text) / Math.max(wordCount, 1)) * 100).toFixed(1),
+    ),
   }
 }

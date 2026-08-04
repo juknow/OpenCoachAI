@@ -201,7 +201,7 @@ async def test_v1_schema_fallback_preserves_public_evaluation_contract() -> None
             assert kwargs["response_model"] is EvaluationModelOutput
             return ProviderEvaluation(
                 output=public_output,
-                model="gpt-5.6-luna",
+                model="qwen3:4b",
                 usage=UsageMetadata(input_tokens=1, output_tokens=1, total_tokens=2),
             )
 
@@ -210,7 +210,6 @@ async def test_v1_schema_fallback_preserves_public_evaluation_contract() -> None
         "v1 prompt",
         Settings(
             _env_file=None,
-            openai_api_key="not-real",
             evaluation_schema_version="v1",
         ),
         EvaluationCache[EvaluationResponse](ttl_seconds=0, max_entries=1),

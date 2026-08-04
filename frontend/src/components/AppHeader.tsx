@@ -21,12 +21,12 @@ export function AppHeader({
   onHistory,
   onConnection,
 }: AppHeaderProps) {
-  const connected = connection.provider === 'openai'
+  const connected = connection.provider === 'local'
   const connectionLabel =
     connection.backendStatus === 'checking'
       ? '연결 확인 중'
       : connected
-        ? 'OpenAI API Mode'
+        ? 'Local AI Mode'
         : 'Demo Mode'
 
   return (

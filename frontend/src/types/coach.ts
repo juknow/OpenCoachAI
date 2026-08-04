@@ -19,7 +19,7 @@ export type PracticeLevel =
   | 'IH'
   | 'AL'
 
-export type CoachProvider = 'mock' | 'openai'
+export type CoachProvider = 'mock' | 'local'
 
 export type AppView =
   | 'landing'
@@ -78,8 +78,8 @@ export type RecordingPhase =
   | 'error'
 
 export interface TranscriptResult {
-  rawText: string
-  editedText: string
+  rawTranscript: string
+  confirmedTranscript: string
   wordCount: number
   wpm: number
   fillerCount: number
@@ -87,6 +87,8 @@ export interface TranscriptResult {
   metrics: SpeechMetrics
   provider: CoachProvider
   requestId?: string
+  transcriptionModel?: string
+  serverMetrics?: import('./api.ts').ApiSpeechMetrics
 }
 
 export type RubricKey =
@@ -187,6 +189,9 @@ export interface ComparisonResult {
   summary: string
   metrics: ComparisonMetric[]
   missionResults: Array<{ mission: string; achieved: boolean }>
+  improvedAreas?: string[]
+  remainingCoreIssue?: string
+  recommendedNextQuestionType?: QuestionType
   provider: 'local'
 }
 
@@ -215,6 +220,9 @@ export interface ConnectionState {
   provider: CoachProvider
   preference: 'auto' | 'demo'
   backendStatus: 'checking' | 'ready' | 'unconfigured' | 'unreachable'
+  readinessIssues?: string[]
+  evaluationModel?: string
+  transcriptionModel?: string
 }
 
 export interface CoachState {

@@ -1,7 +1,7 @@
 import type {
   ApiErrorResponse,
-  ConfigStatusResponse,
   HealthResponse,
+  ReadinessResponse,
 } from '../types/api.ts'
 
 const DEFAULT_TIMEOUT_MS = 75_000
@@ -55,18 +55,24 @@ export const requestApi = async <T>(
   }
 }
 
-export const checkBackendConnection = async (): Promise<
-  'ready' | 'unconfigured' | 'unreachable'
-> => {
+export interface BackendConnectionCheck {
+  status: 'ready' | 'unconfigured' | 'unreachable'
+  readiness?: ReadinessResponse
+}
+
+export const checkBackendConnection = async (): Promise<BackendConnectionCheck> => {
   try {
     await requestApi<HealthResponse>('/api/health', undefined, 5_000)
-    const config = await requestApi<ConfigStatusResponse>(
-      '/api/config/status',
+    const readiness = await requestApi<ReadinessResponse>(
+      '/api/readiness',
       undefined,
       5_000,
     )
-    return config.openaiConfigured ? 'ready' : 'unconfigured'
+    return {
+      status: readiness.ready ? 'ready' : 'unconfigured',
+      readiness,
+    }
   } catch {
-    return 'unreachable'
+    return { status: 'unreachable' }
   }
 }

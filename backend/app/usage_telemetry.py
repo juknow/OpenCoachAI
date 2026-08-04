@@ -41,7 +41,7 @@ def record_usage_event(event: UsageEvent, *, enabled: bool) -> None:
                 1,
             )
             payload["rolling_sample_count"] = len(totals)
-    LOGGER.info("openai_usage %s", json.dumps(payload, separators=(",", ":"), sort_keys=True))
+    LOGGER.info("ai_usage %s", json.dumps(payload, separators=(",", ":"), sort_keys=True))
 
 
 def usage_event(

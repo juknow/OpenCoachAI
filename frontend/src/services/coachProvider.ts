@@ -4,4 +4,4 @@ import { httpCoachService } from './httpCoachService.ts'
 import { mockCoachService } from './mockCoachService.ts'
 
 export const getCoachService = (provider: CoachProvider): CoachService =>
-  provider === 'openai' ? httpCoachService : mockCoachService
+  provider === 'local' ? httpCoachService : mockCoachService

@@ -6,7 +6,7 @@ from app.config import Settings
 from app.errors import ProviderResponseError
 from app.evaluation_cache import ResultCache
 from app.evaluation_defaults import SAFETY_NOTICE, estimated_range_for, reusable_structure_for
-from app.providers.base import AiProvider
+from app.providers.base import EvaluationProvider
 from app.schemas.common import ResponseMetadata
 from app.schemas.evaluation import (
     CompactDimension,
@@ -138,7 +138,7 @@ def compact_to_public(
 class EvaluationService:
     def __init__(
         self,
-        provider: AiProvider,
+        provider: EvaluationProvider,
         prompt: str,
         settings: Settings,
         cache: ResultCache[EvaluationResponse],
@@ -226,7 +226,7 @@ class EvaluationService:
 
     def _cache_key(self, request: EvaluationRequest) -> str:
         material = {
-            "model": self._settings.openai_evaluation_model,
+            "model": self._settings.evaluation_model,
             "promptVersion": self._settings.evaluation_prompt_version,
             "schemaVersion": self._settings.evaluation_schema_version,
             "promptHash": hashlib.sha256(self._prompt.encode("utf-8")).hexdigest(),
@@ -242,7 +242,7 @@ class EvaluationService:
 
     def _prompt_cache_key(self) -> str:
         return (
-            f"opic:evaluation-legacy:{self._settings.openai_evaluation_model}:"
+            f"opic:evaluation-legacy:{self._settings.evaluation_model}:"
             f"{self._settings.evaluation_prompt_version}:"
             f"{self._settings.evaluation_schema_version}"
         )

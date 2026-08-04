@@ -6,7 +6,7 @@ import type {
   EvaluationResponse,
   HigherAnswerRequest,
   HigherAnswerResponse,
-  TranscriptionResponse,
+  TranscriptionV3Response,
 } from '../types/api.ts'
 import type {
   EvaluationResult,
@@ -189,7 +189,7 @@ const mapEvaluation = (response: EvaluationResponse): EvaluationResult => {
       (item) => `${item.step}. ${item.titleKorean} — ${item.explanationKorean}`,
     ),
     retryMission: value.retryMission,
-    provider: 'openai',
+    provider: 'local',
     safetyNotice: value.safetyNoticeKorean,
     metadata: {
       requestId: response.metadata.requestId,
@@ -219,15 +219,17 @@ export const httpCoachService: CoachService = {
     formData.append('durationSeconds', String(input.metrics.durationSeconds))
     formData.append('attemptNumber', String(input.attempt))
     onProgress?.('transcribe')
-    const response = await requestApi<TranscriptionResponse>('/api/transcriptions', {
+    const response = await requestApi<TranscriptionV3Response>('/api/v3/transcriptions', {
       method: 'POST',
       body: formData,
     })
     return createTranscriptResult(
-      response.transcript,
+      response.rawTranscript,
       input.metrics,
-      'openai',
+      'local',
       response.requestId,
+      response.speechMetrics,
+      response.model,
     )
   },
 
@@ -237,11 +239,12 @@ export const httpCoachService: CoachService = {
       profile: profileForApi(input.profile),
       question: questionForApi(input.question),
       attemptNumber: input.attempt,
-      transcript: input.transcript.editedText,
+      rawTranscript: input.transcript.rawTranscript,
+      confirmedTranscript: input.transcript.confirmedTranscript,
       speechMetrics: toApiSpeechMetrics(input.transcript),
       previousAttempt: previousAttemptForApi(input),
     }
-    const response = await requestApi<EvaluationResponse>('/api/v2/evaluations', {
+    const response = await requestApi<EvaluationResponse>('/api/v3/evaluations', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -266,12 +269,12 @@ export const httpCoachService: CoachService = {
         topic: input.question.topic,
         question: input.question.prompt,
       },
-      transcript: input.transcript.editedText,
+      transcript: input.transcript.confirmedTranscript,
       mostLikelyLevel: input.evaluation.estimatedLevel,
       baseAnswer: baseAnswer.sentences ?? splitSentences(baseAnswer.text),
     }
     const response = await requestApi<HigherAnswerResponse>(
-      '/api/v2/improvements/higher',
+      '/api/v3/improvements/higher',
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

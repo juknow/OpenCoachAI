@@ -64,26 +64,26 @@ async def test_failed_evaluation_is_not_cached() -> None:
     assert calls == 2
 
 
-def test_evaluation_cache_key_never_depends_on_api_key() -> None:
+def test_evaluation_cache_key_never_depends_on_usage_logging() -> None:
     request = EvaluationRequest.model_validate(evaluation_request())
     cache = EvaluationCache[EvaluationResponse](ttl_seconds=300, max_entries=8)
     first = EvaluationService(
         object(),
         "prompt",
-        Settings(_env_file=None, openai_api_key="first-private-key"),
+        Settings(_env_file=None, usage_log_enabled=False),
         cache,
     )
     second = EvaluationService(
         object(),
         "prompt",
-        Settings(_env_file=None, openai_api_key="different-private-key"),
+        Settings(_env_file=None, usage_log_enabled=True),
         cache,
     )
 
     assert first._cache_key(request) == second._cache_key(request)
 
 
-def test_v2_result_and_prompt_cache_keys_exclude_secrets_and_dynamic_suffix() -> None:
+def test_v2_result_and_stable_prompt_keys_exclude_dynamic_suffix() -> None:
     request = EvaluationRequest.model_validate(evaluation_request())
     changed_payload = evaluation_request()
     changed_payload["transcript"] = "A different learner transcript."
@@ -91,23 +91,23 @@ def test_v2_result_and_prompt_cache_keys_exclude_secrets_and_dynamic_suffix() ->
     first = EvaluationV2Service(
         object(),
         "stable prompt",
-        Settings(_env_file=None, openai_api_key="first-private-key"),
+        Settings(_env_file=None, usage_log_enabled=False),
         EvaluationCache[EvaluationV2Response](ttl_seconds=300, max_entries=8),
     )
     second = EvaluationV2Service(
         object(),
         "stable prompt",
-        Settings(_env_file=None, openai_api_key="different-private-key"),
+        Settings(_env_file=None, usage_log_enabled=True),
         EvaluationCache[EvaluationV2Response](ttl_seconds=300, max_entries=8),
     )
 
     assert first._cache_key(request) == second._cache_key(request)
     assert first._cache_key(request) != first._cache_key(changed)
     assert first._prompt_cache_key() == second._prompt_cache_key()
-    assert "private" not in first._prompt_cache_key()
+    assert request.transcript not in first._prompt_cache_key()
 
 
-def test_higher_answer_cache_key_excludes_api_key() -> None:
+def test_higher_answer_cache_key_excludes_dynamic_transcript() -> None:
     source = evaluation_request()
     request = HigherAnswerRequest.model_validate(
         {
@@ -128,16 +128,16 @@ def test_higher_answer_cache_key_excludes_api_key() -> None:
     first = HigherAnswerService(
         object(),
         "stable higher prompt",
-        Settings(_env_file=None, openai_api_key="first-private-key"),
+        Settings(_env_file=None, usage_log_enabled=False),
         EvaluationCache[HigherAnswerResponse](ttl_seconds=300, max_entries=8),
     )
     second = HigherAnswerService(
         object(),
         "stable higher prompt",
-        Settings(_env_file=None, openai_api_key="different-private-key"),
+        Settings(_env_file=None, usage_log_enabled=True),
         EvaluationCache[HigherAnswerResponse](ttl_seconds=300, max_entries=8),
     )
 
     assert first._cache_key(request) == second._cache_key(request)
     assert first._prompt_cache_key() == second._prompt_cache_key()
-    assert "private" not in first._prompt_cache_key()
+    assert request.transcript not in first._prompt_cache_key()

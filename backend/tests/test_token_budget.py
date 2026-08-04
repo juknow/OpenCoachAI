@@ -3,9 +3,9 @@ import math
 from pathlib import Path
 
 import pytest
-from openai.lib._pydantic import to_strict_json_schema
 from pydantic import ValidationError
 
+from app.config import Settings
 from app.schemas.evaluation import (
     CompactEvaluationOutput,
     CompactEvaluationV2Output,
@@ -107,6 +107,28 @@ def test_v2_initial_evaluation_is_smaller_than_eager_contract() -> None:
     assert lazy_total <= 3_600
 
 
+def test_local_evaluation_fixture_fits_configured_context_budget() -> None:
+    settings = Settings(_env_file=None, ollama_context_length=4096)
+    request = EvaluationRequest.model_validate(evaluation_request())
+    parts = [
+        CORE_PROMPT_PATH.read_text(encoding="utf-8").strip(),
+        json.dumps(
+            CompactEvaluationV2Output.model_json_schema(by_alias=True),
+            ensure_ascii=False,
+            separators=(",", ":"),
+        ),
+        json.dumps(
+            EvaluationV2Service._ai_payload(request),
+            ensure_ascii=False,
+            separators=(",", ":"),
+        ),
+        evaluation_v2_output().model_dump_json(by_alias=True),
+    ]
+    estimated_total = sum(estimate_tokens_offline(part) for part in parts)
+
+    assert estimated_total <= settings.ollama_context_length
+
+
 def test_explicit_cache_breakpoint_has_an_eligible_stable_prefix() -> None:
     stable_prefix = [
         CORE_PROMPT_PATH.read_text(encoding="utf-8").strip(),
@@ -120,9 +142,9 @@ def test_explicit_cache_breakpoint_has_an_eligible_stable_prefix() -> None:
     assert sum(estimate_tokens_offline(part) for part in stable_prefix) >= 1_024
 
 
-def test_openai_transport_schema_omits_string_lengths_but_server_still_validates() -> None:
+def test_transport_schema_omits_string_lengths_but_server_still_validates() -> None:
     schema_json = json.dumps(
-        to_strict_json_schema(CompactEvaluationV2Output),
+        CompactEvaluationV2Output.model_json_schema(by_alias=True),
         ensure_ascii=False,
         separators=(",", ":"),
     )

@@ -5,7 +5,7 @@ from app.config import Settings
 from app.errors import ProviderResponseError
 from app.evaluation_cache import ResultCache
 from app.evaluation_defaults import SAFETY_NOTICE, estimated_range_for, reusable_structure_for
-from app.providers.base import AiProvider
+from app.providers.base import EvaluationProvider
 from app.schemas.common import ResponseMetadata
 from app.schemas.evaluation import (
     CompactDimension,
@@ -123,7 +123,7 @@ def compact_to_v2(
 class EvaluationV2Service:
     def __init__(
         self,
-        provider: AiProvider,
+        provider: EvaluationProvider,
         prompt: str,
         settings: Settings,
         cache: ResultCache[EvaluationV2Response],
@@ -192,7 +192,7 @@ class EvaluationV2Service:
         return self._hash(
             {
                 "kind": "evaluation-v2",
-                "model": self._settings.openai_evaluation_model,
+                "model": self._settings.evaluation_model,
                 "promptVersion": self._settings.evaluation_v2_prompt_version,
                 "schemaVersion": self._settings.evaluation_v2_schema_version,
                 "promptHash": hashlib.sha256(self._prompt.encode("utf-8")).hexdigest(),
@@ -202,7 +202,7 @@ class EvaluationV2Service:
 
     def _prompt_cache_key(self) -> str:
         return (
-            f"opic:evaluation-v2:{self._settings.openai_evaluation_model}:"
+            f"opic:evaluation-v2:{self._settings.evaluation_model}:"
             f"{self._settings.evaluation_v2_prompt_version}:"
             f"{self._settings.evaluation_v2_schema_version}"
         )
@@ -225,7 +225,7 @@ class EvaluationV2Service:
 class HigherAnswerService:
     def __init__(
         self,
-        provider: AiProvider,
+        provider: EvaluationProvider,
         prompt: str,
         settings: Settings,
         cache: ResultCache[HigherAnswerResponse],
@@ -270,7 +270,7 @@ class HigherAnswerService:
             user_payload=request.model_dump(mode="json", by_alias=True),
             response_model=CompactHigherAnswerOutput,
             request_type="higher_answer",
-            max_output_tokens=self._settings.openai_higher_answer_max_output_tokens,
+            max_output_tokens=self._settings.higher_answer_max_output_tokens,
             prompt_cache_key=self._prompt_cache_key(),
         )
         try:
@@ -295,7 +295,7 @@ class HigherAnswerService:
         return EvaluationV2Service._hash(
             {
                 "kind": "higher-answer",
-                "model": self._settings.openai_evaluation_model,
+                "model": self._settings.evaluation_model,
                 "promptVersion": self._settings.higher_answer_prompt_version,
                 "schemaVersion": self._settings.higher_answer_schema_version,
                 "promptHash": hashlib.sha256(self._prompt.encode("utf-8")).hexdigest(),
@@ -305,7 +305,7 @@ class HigherAnswerService:
 
     def _prompt_cache_key(self) -> str:
         return (
-            f"opic:higher-answer:{self._settings.openai_evaluation_model}:"
+            f"opic:higher-answer:{self._settings.evaluation_model}:"
             f"{self._settings.higher_answer_prompt_version}:"
             f"{self._settings.higher_answer_schema_version}"
         )

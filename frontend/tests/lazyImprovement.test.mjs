@@ -18,7 +18,7 @@ const higher = {
 
 const firstAttempt = {
   attempt: 1,
-  transcript: { editedText: 'Learner answer.' },
+  transcript: { confirmedTranscript: 'Learner answer.' },
   evaluation: { improvements: [core] },
   completedAt: '2026-08-03T00:00:00.000Z',
 }

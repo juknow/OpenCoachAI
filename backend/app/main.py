@@ -3,7 +3,7 @@ from uuid import uuid4
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import evaluations, health, transcriptions
+from app.api.routes import evaluations, health, readiness, transcriptions
 from app.config import get_settings
 from app.errors import register_error_handlers
 from app.evaluation_cache import EvaluationCache
@@ -41,6 +41,7 @@ def create_app() -> FastAPI:
         return response
 
     application.include_router(health.router)
+    application.include_router(readiness.router)
     application.include_router(transcriptions.router)
     application.include_router(evaluations.router)
     register_error_handlers(application)

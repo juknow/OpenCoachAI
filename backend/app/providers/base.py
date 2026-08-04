@@ -13,6 +13,23 @@ class ProviderTranscription:
     text: str
     model: str
     usage: UsageMetadata | None = None
+    words: tuple["ProviderWord", ...] = ()
+    segments: tuple["ProviderSegment", ...] = ()
+
+
+@dataclass(frozen=True)
+class ProviderWord:
+    text: str
+    start: float
+    end: float
+    probability: float | None = None
+
+
+@dataclass(frozen=True)
+class ProviderSegment:
+    text: str
+    start: float
+    end: float
 
 
 @dataclass(frozen=True)
@@ -22,7 +39,7 @@ class ProviderEvaluation:
     usage: UsageMetadata | None
 
 
-class AiProvider(Protocol):
+class TranscriptionProvider(Protocol):
     async def transcribe(
         self,
         *,
@@ -32,6 +49,9 @@ class AiProvider(Protocol):
         prompt: str,
     ) -> ProviderTranscription: ...
 
+
+
+class EvaluationProvider(Protocol):
     async def evaluate(
         self,
         *,
@@ -42,3 +62,7 @@ class AiProvider(Protocol):
         max_output_tokens: int | None = None,
         prompt_cache_key: str | None = None,
     ) -> ProviderEvaluation: ...
+
+
+class AiProvider(TranscriptionProvider, EvaluationProvider, Protocol):
+    pass

@@ -22,7 +22,7 @@ class FakeProvider:
 
     async def transcribe(self, **kwargs) -> ProviderTranscription:
         self.transcription_calls.append(kwargs)
-        return ProviderTranscription(text=self.transcription_text, model="gpt-4o-mini-transcribe")
+        return ProviderTranscription(text=self.transcription_text, model="base.en")
 
     async def evaluate(self, **kwargs) -> ProviderEvaluation:
         self.evaluation_calls.append(kwargs)
@@ -37,7 +37,7 @@ class FakeProvider:
             output = evaluation_output()
         return ProviderEvaluation(
             output=output,
-            model="gpt-5.6-luna",
+            model="qwen3:4b",
             usage=UsageMetadata(
                 input_tokens=120,
                 output_tokens=340,
@@ -58,7 +58,6 @@ def fake_provider() -> FakeProvider:
 def configured_settings() -> Settings:
     return Settings(
         _env_file=None,
-        openai_api_key="test-key-not-a-real-secret",
         max_audio_bytes=900_000,
     )
 

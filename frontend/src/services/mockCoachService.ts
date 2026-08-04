@@ -99,11 +99,11 @@ export const mockCoachService: CoachService = {
     await wait(650)
 
     const template = MOCK_FEEDBACK_TEMPLATES[input.question.type]
-    const rawText = interpolate(
+    const rawTranscript = interpolate(
       input.attempt === 1 ? template.transcript.first : template.transcript.retry,
       input.question.topic,
     )
-    return createTranscriptResult(rawText, input.metrics, 'mock')
+    return createTranscriptResult(rawTranscript, input.metrics, 'mock')
   },
 
   async evaluate(
@@ -117,7 +117,7 @@ export const mockCoachService: CoachService = {
 
     const template = MOCK_FEEDBACK_TEMPLATES[input.question.type]
     const topic = input.question.topic
-    const wordCount = countWords(input.transcript.editedText)
+    const wordCount = countWords(input.transcript.confirmedTranscript)
     const rubrics = buildRubrics(wordCount, input.attempt)
     const level = practiceLevelFor(wordCount, input.attempt)
     const confidence = wordCount < 25 ? '낮음' : wordCount < 80 ? '보통' : '높음'
@@ -139,7 +139,7 @@ export const mockCoachService: CoachService = {
       mainPointLabel: template.mainPointLabel,
       mainPointFeedback: template.mainPointFeedback,
       feelingLanguage: wordCount < 20 ? [] : ['I feel', 'I really like'],
-      connectors: input.transcript.editedText.match(/\b(?:first|then|also|because|finally|however)\b/gi) ?? [],
+      connectors: input.transcript.confirmedTranscript.match(/\b(?:first|then|also|because|finally|however)\b/gi) ?? [],
       expressions: template.expressions.map((item) => ({
         ...item,
         expression: interpolate(item.expression, topic),
@@ -150,12 +150,12 @@ export const mockCoachService: CoachService = {
       })),
       rubrics,
       strengths: [
-        { title: '주제 응답', detail: '질문과 관련된 중심 소재를 제시했습니다.', evidence: input.transcript.editedText.split(/[.!?]/)[0]?.trim() || '응답 시작' },
-        { title: '의사소통 시도', detail: '완벽하지 않아도 답변을 이어 가려는 흐름이 있습니다.', evidence: input.transcript.editedText.split(/[.!?]/)[1]?.trim() || '답변을 계속 이어 감' },
+        { title: '주제 응답', detail: '질문과 관련된 중심 소재를 제시했습니다.', evidence: input.transcript.confirmedTranscript.split(/[.!?]/)[0]?.trim() || '응답 시작' },
+        { title: '의사소통 시도', detail: '완벽하지 않아도 답변을 이어 가려는 흐름이 있습니다.', evidence: input.transcript.confirmedTranscript.split(/[.!?]/)[1]?.trim() || '답변을 계속 이어 감' },
       ],
       blocker: {
         ...template.blocker,
-        evidence: input.transcript.editedText.slice(0, 150),
+        evidence: input.transcript.confirmedTranscript.slice(0, 150),
       },
       corrections: [
         { before: 'It is nice and there are many things.', after: 'It has a welcoming atmosphere and several useful features.', reason: '일반적인 표현을 구체적인 명사와 형용사로 바꿉니다.' },

@@ -45,9 +45,18 @@ function ComparisonPanel({
         ))}
       </div>
       <div className="transcript-compare">
-        <article><small>첫 답변</small><p>{first.transcript.editedText}</p></article>
-        <article><small>재답변</small><p>{retry.transcript.editedText}</p></article>
+        <article><small>첫 답변</small><p>{first.transcript.confirmedTranscript}</p></article>
+        <article><small>재답변</small><p>{retry.transcript.confirmedTranscript}</p></article>
       </div>
+      {comparison.improvedAreas?.length ? (
+        <p><strong>향상된 영역:</strong> {comparison.improvedAreas.join(', ')}</p>
+      ) : null}
+      {comparison.remainingCoreIssue ? (
+        <p><strong>남은 핵심 문제:</strong> {comparison.remainingCoreIssue}</p>
+      ) : null}
+      {comparison.recommendedNextQuestionType ? (
+        <p><strong>다음 추천 유형:</strong> {QUESTION_TYPE_META[comparison.recommendedNextQuestionType].label}</p>
+      ) : null}
       <ul className="mission-checks">
         {comparison.missionResults.map((item) => <li key={item.mission} className={item.achieved ? 'achieved' : ''}>{item.achieved ? '✓' : '○'} {item.mission}</li>)}
       </ul>
@@ -94,7 +103,7 @@ export function FeedbackPage({
   return (
     <main className="feedback-page page-shell">
       <header className="feedback-intro">
-        <span className="eyebrow success">✓ ANALYSIS COMPLETE · {evaluation.provider === 'openai' ? 'OPENAI API' : 'DEMO'}</span>
+        <span className="eyebrow success">✓ ANALYSIS COMPLETE · {evaluation.provider === 'local' ? 'LOCAL AI' : 'DEMO'}</span>
         <h1>{session.retryAttempt ? '재답변 비교 피드백' : '첫 번째 답변 피드백'}</h1>
         <p><span className={`type-badge ${meta.accent}`}>{meta.label}</span> {session.question.prompt}</p>
         <button className="button secondary" type="button" onClick={onHome}>연습 홈</button>
@@ -117,7 +126,7 @@ export function FeedbackPage({
             <div className="diagnostic-grid">
               {evaluation.diagnostics.map((item) => <article key={item.label}><header><strong>{item.label}</strong><em>{item.score}/4</em></header><p>{item.feedback}</p></article>)}
             </div>
-            <div className="main-point-card"><span>MAIN POINT · {evaluation.mainPointLabel}</span><p>{evaluation.mainPointFeedback}</p><blockquote>“{transcript.editedText.slice(0, 180)}”</blockquote></div>
+            <div className="main-point-card"><span>MAIN POINT · {evaluation.mainPointLabel}</span><p>{evaluation.mainPointFeedback}</p><blockquote>“{transcript.confirmedTranscript.slice(0, 180)}”</blockquote></div>
             <div className="language-grid">
               <article><h3>Feeling language</h3><div className="tag-row">{evaluation.feelingLanguage.length ? evaluation.feelingLanguage.map((item) => <span key={item}>{item}</span>) : <span>표현 없음</span>}</div><p>감정과 반응을 표현하는 언어를 확인합니다.</p></article>
               <article><h3>연결어와 발화 리듬</h3><div className="tag-row">{evaluation.connectors.length ? evaluation.connectors.map((item, index) => <span key={`${item}-${index}`}>{item}</span>) : <span>연결어 없음</span>}</div><p>기능적인 연결 표현과 흐름을 확인합니다.</p></article>
@@ -191,7 +200,7 @@ export function FeedbackPage({
         </div>
 
         <aside className="feedback-aside">
-          <section><h2>Speech Summary</h2><div className="speech-stats"><div><strong>{Math.round(transcript.metrics.durationSeconds)}s</strong><small>답변 시간</small></div><div><strong>{transcript.wpm}</strong><small>WPM</small></div><div><strong>{transcript.fillerCount}</strong><small>감지된 um/uh</small></div><div><strong>{transcript.metrics.shortPauses}</strong><small>짧은 끊김</small></div><div><strong>{transcript.metrics.longPauses}</strong><small>긴 멈춤</small></div><div><strong>{transcript.metrics.silenceRatio}%</strong><small>무음 비율</small></div></div><p>원본 파형 기반 브라우저 추정치 · 신뢰도 {transcript.metrics.confidence === 'low' ? '낮음' : '보통'}.</p><details><summary>원문 전사 보기</summary><p>{transcript.rawText}</p></details></section>
+          <section><h2>Speech Summary</h2><div className="speech-stats"><div><strong>{Math.round(transcript.metrics.durationSeconds)}s</strong><small>답변 시간</small></div><div><strong>{transcript.wpm}</strong><small>WPM</small></div><div><strong>{transcript.fillerCount}</strong><small>감지된 um/uh</small></div><div><strong>{transcript.serverMetrics?.acoustic.hesitationPauseCount ?? transcript.metrics.shortPauses}</strong><small>짧은 끊김</small></div><div><strong>{transcript.serverMetrics?.acoustic.longPauseCount ?? transcript.metrics.longPauses}</strong><small>긴 멈춤</small></div><div><strong>{transcript.serverMetrics?.acoustic.silenceRatio ?? transcript.metrics.silenceRatio}%</strong><small>무음 비율</small></div></div><p>전사 timestamp와 브라우저 파형을 이용한 결정론적 추정치 · 발음 점수가 아닙니다.</p><details><summary>원문 전사 보기</summary><p>{transcript.rawTranscript}</p></details></section>
           <section><h2>Reusable Structure</h2><ol>{evaluation.reusableStructure.map((item) => <li key={item}>{item}</li>)}</ol></section>
           <section className="retry-card"><span className="eyebrow purple">↶ RETRY MISSION</span><h2>이번에는 이것만 바꿔보세요</h2><ul>{evaluation.retryMission.map((item) => <li key={item}>✓ {item}</li>)}</ul><button className="button primary" type="button" onClick={onRetry}>같은 문제 다시 답하기 →</button></section>
         </aside>

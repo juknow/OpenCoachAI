@@ -12,12 +12,36 @@ export interface HealthResponse {
   status: 'ok'
 }
 
-export interface ConfigStatusResponse {
-  openaiConfigured: boolean
+export interface ReadinessResponse {
+  provider: 'local'
+  ready: boolean
+  ollama: {
+    running: boolean
+    modelAvailable: boolean
+    model: string
+  } | null
+  whisper: {
+    libraryAvailable: boolean
+    modelAvailable: boolean
+    modelLoaded: boolean
+    model: string
+    device: 'cpu'
+    computeType: 'int8'
+  } | null
+  issues: string[]
 }
 
 export interface TranscriptionResponse {
   transcript: string
+  requestId: string
+}
+
+export interface TranscriptionV3Response {
+  rawTranscript: string
+  speechMetrics: ApiSpeechMetrics
+  words: Array<{ text: string; start: number; end: number; probability: number | null }>
+  segments: Array<{ text: string; start: number; end: number }>
+  model: string
   requestId: string
 }
 
@@ -42,7 +66,12 @@ export interface ApiSpeechMetrics {
     silenceRatio: number
     energyVariationIndex: number
     confidence: 'low' | 'medium'
+    averageHesitationPauseSeconds?: number | null
+    averageLongPauseSeconds?: number | null
   }
+  sentenceCount?: number | null
+  averageSentenceLength?: number | null
+  repeatedWordRatio?: number | null
 }
 
 export interface ApiDimensionEvaluation {
@@ -86,7 +115,8 @@ export interface EvaluationRequest {
     relatedTopics: string[]
   }
   attemptNumber: 1 | 2
-  transcript: string
+  rawTranscript: string
+  confirmedTranscript: string
   speechMetrics: ApiSpeechMetrics
   previousAttempt: {
     level: PracticeLevel

@@ -66,14 +66,17 @@ function App() {
       type: 'SET_CONNECTION',
       connection: { provider: 'mock', preference, backendStatus: 'checking' },
     })
-    const backendStatus = await checkBackendConnection()
+    const check = await checkBackendConnection()
     if (checkId !== connectionCheckId.current) return
     dispatch({
       type: 'SET_CONNECTION',
       connection: {
         preference,
-        backendStatus,
-        provider: backendStatus === 'ready' && preference === 'auto' ? 'openai' : 'mock',
+        backendStatus: check.status,
+        provider: check.status === 'ready' && preference === 'auto' ? 'local' : 'mock',
+        readinessIssues: check.readiness?.issues,
+        evaluationModel: check.readiness?.ollama?.model,
+        transcriptionModel: check.readiness?.whisper?.model,
       },
     })
   }, [])
@@ -335,11 +338,11 @@ function App() {
         <ApiConnectionDialog
           connection={state.connection}
           onClose={() => setConnectionOpen(false)}
-          onUseApi={() => {
+          onUseLocal={() => {
             dispatch({
               type: 'SET_CONNECTION',
               connection: {
-                provider: 'openai',
+                provider: 'local',
                 preference: 'auto',
                 backendStatus: 'ready',
               },

@@ -2,7 +2,7 @@
 
 The current `ResultCache` protocol is implemented by the bounded in-process
 `EvaluationCache`. It provides TTL result reuse and single-flight coalescing inside
-one FastAPI process. It cannot prevent duplicate OpenAI charges across workers or
+one FastAPI process. It cannot prevent duplicate local evaluation work across workers or
 hosts.
 
 Use a Redis-compatible shared adapter before deploying multiple backend instances.

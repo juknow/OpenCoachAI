@@ -6,7 +6,7 @@ interface ProcessingScreenProps {
 }
 
 export function ProcessingScreen({ stage, provider }: ProcessingScreenProps) {
-  const modeLabel = provider === 'openai' ? 'OpenAI' : 'Demo'
+  const modeLabel = provider === 'local' ? 'Local AI' : 'Demo'
   const stages: Array<{ key: ProcessingStage; label: string }> = [
     { key: 'upload', label: '음성을 안전하게 준비하고 있습니다' },
     { key: 'transcribe', label: `${modeLabel} 영어 전사문을 만들고 있습니다` },

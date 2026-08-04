@@ -24,7 +24,7 @@ def _remove_transport_string_length_keywords(value: object) -> None:
             _remove_transport_string_length_keywords(child)
 
 
-class OpenAIStructuredOutput(ApiModel):
+class StructuredModelOutput(ApiModel):
     @classmethod
     def model_json_schema(cls, **kwargs: Any) -> dict[str, Any]:
         schema = super().model_json_schema(**kwargs)
@@ -67,6 +67,8 @@ class AcousticMetrics(ApiModel):
     silence_ratio: float = Field(ge=0, le=100)
     energy_variation_index: float = Field(ge=0, le=100)
     confidence: Literal["low", "medium"]
+    average_hesitation_pause_seconds: float | None = Field(default=None, ge=0, le=120)
+    average_long_pause_seconds: float | None = Field(default=None, ge=0, le=120)
 
 
 class SpeechMetrics(ApiModel):
@@ -79,6 +81,9 @@ class SpeechMetrics(ApiModel):
     filler_rate_per_100_words: float = Field(ge=0, le=100)
     opening_20_second_estimate: str = Field(max_length=3000)
     acoustic: AcousticMetrics
+    sentence_count: int | None = Field(default=None, ge=0)
+    average_sentence_length: float | None = Field(default=None, ge=0)
+    repeated_word_ratio: float | None = Field(default=None, ge=0, le=100)
 
 
 class DimensionScoreSet(ApiModel):
@@ -112,6 +117,33 @@ class EvaluationRequest(ApiModel):
         if not value.strip():
             raise ValueError("transcript must not be blank")
         return value
+
+
+class EvaluationV3Request(ApiModel):
+    profile: UserProfile
+    question: PracticeQuestion
+    attempt_number: Literal[1, 2]
+    raw_transcript: str = Field(min_length=1, max_length=12_000)
+    confirmed_transcript: str = Field(min_length=1, max_length=12_000)
+    speech_metrics: SpeechMetrics
+    previous_attempt: PreviousAttempt | None = None
+
+    @field_validator("raw_transcript", "confirmed_transcript")
+    @classmethod
+    def transcript_must_contain_speech(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("transcript must not be blank")
+        return value
+
+    def to_evaluation_request(self) -> EvaluationRequest:
+        return EvaluationRequest(
+            profile=self.profile,
+            question=self.question,
+            attempt_number=self.attempt_number,
+            transcript=self.confirmed_transcript,
+            speech_metrics=self.speech_metrics,
+            previous_attempt=self.previous_attempt,
+        )
 
 
 class DimensionEvaluation(ApiModel):
@@ -247,7 +279,7 @@ class CompactCorrection(ApiModel):
     explanation: ShortKorean
 
 
-class CompactEvaluationCore(OpenAIStructuredOutput):
+class CompactEvaluationCore(StructuredModelOutput):
     level: PracticeLevel
     confidence: Confidence
     confidence_why: ShortKorean
@@ -272,7 +304,7 @@ class CompactEvaluationOutput(CompactEvaluationCore):
     higher_answer: list[ShortEnglish] = Field(min_length=12, max_length=15)
 
 
-class CompactHigherAnswerOutput(OpenAIStructuredOutput):
+class CompactHigherAnswerOutput(StructuredModelOutput):
     sentences: list[ShortEnglish] = Field(min_length=12, max_length=15)
 
 
