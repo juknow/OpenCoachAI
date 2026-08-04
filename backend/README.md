@@ -22,7 +22,7 @@ Download the faster-whisper model once. Runtime auto-download is disabled so a
 practice request never starts a hidden model download:
 
 ```powershell
-python -c "from huggingface_hub import snapshot_download; snapshot_download('Systran/faster-whisper-base.en')"
+python -c "from huggingface_hub import snapshot_download; snapshot_download('Systran/faster-whisper-small.en')"
 ```
 
 Keep these defaults in `backend/.env` for the confirmed machine profile:
@@ -32,12 +32,17 @@ AI_PROVIDER=local
 OLLAMA_MODEL=qwen3:4b
 OLLAMA_CONTEXT_LENGTH=4096
 OLLAMA_MAX_CONCURRENT_EVALUATIONS=1
-WHISPER_MODEL=base.en
+WHISPER_MODEL=small.en
 WHISPER_DEVICE=cpu
 WHISPER_COMPUTE_TYPE=int8
 WHISPER_CPU_THREADS=4
 WHISPER_LANGUAGE=en
 WHISPER_LOCAL_FILES_ONLY=true
+WHISPER_VAD_ENABLED=true
+WHISPER_VAD_THRESHOLD=0.35
+WHISPER_VAD_MIN_SPEECH_DURATION_MS=0
+WHISPER_VAD_MIN_SILENCE_DURATION_MS=1000
+WHISPER_VAD_SPEECH_PAD_MS=500
 ```
 
 Run the API:

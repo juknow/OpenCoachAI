@@ -5,7 +5,7 @@ from app.services.speech_metrics_service import calculate_speech_metrics
 def test_speech_metrics_are_deterministic_from_transcript_and_timestamps() -> None:
     transcription = ProviderTranscription(
         text="Um, I I went home. However, I felt happy.",
-        model="base.en",
+        model="small.en",
         words=(
             ProviderWord("Um", 0.5, 0.7),
             ProviderWord("I", 0.8, 0.9),
@@ -33,7 +33,7 @@ def test_speech_metrics_are_deterministic_from_transcript_and_timestamps() -> No
 
 def test_empty_timestamp_metrics_do_not_divide_by_zero() -> None:
     metrics = calculate_speech_metrics(
-        ProviderTranscription(text="Hello", model="base.en"),
+        ProviderTranscription(text="Hello", model="small.en"),
         1,
     )
     assert metrics.word_count == 1

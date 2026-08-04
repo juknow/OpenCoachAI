@@ -44,7 +44,7 @@ def test_local_readiness_reports_models_without_loading_or_calling_them(monkeypa
             "libraryAvailable": True,
             "modelAvailable": True,
             "modelLoaded": False,
-            "model": "base.en",
+            "model": "small.en",
             "device": "cpu",
             "computeType": "int8",
         },

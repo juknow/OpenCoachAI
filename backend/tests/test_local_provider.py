@@ -85,6 +85,11 @@ async def test_ollama_provider_rejects_truncated_structured_output() -> None:
 
 @pytest.mark.asyncio
 async def test_faster_whisper_preserves_text_and_removes_temporary_file() -> None:
+    verbatim_text = (
+        " Um, I go, I went to, I went to the park yesterday and, uh, "
+        "I meet my friend, but we, we couldn't play for a long time."
+    )
+
     class FakeModel:
         path: str | None = None
 
@@ -92,14 +97,21 @@ async def test_faster_whisper_preserves_text_and_removes_temporary_file() -> Non
             self.path = path
             assert Path(path).exists()
             assert kwargs["language"] == "en"
+            assert kwargs["task"] == "transcribe"
             assert kwargs["word_timestamps"] is True
+            assert kwargs["condition_on_previous_text"] is False
+            assert kwargs["vad_filter"] is True
+            assert kwargs["vad_parameters"] == {
+                "threshold": 0.35,
+                "min_speech_duration_ms": 0,
+                "min_silence_duration_ms": 1000,
+                "speech_pad_ms": 500,
+            }
             words = [
                 SimpleNamespace(word=" Um", start=0.4, end=0.7, probability=0.9),
                 SimpleNamespace(word=" I", start=0.8, end=0.9, probability=0.95),
-                SimpleNamespace(word=" I", start=1.0, end=1.1, probability=0.95),
-                SimpleNamespace(word=" went.", start=1.2, end=1.6, probability=0.9),
             ]
-            segment = SimpleNamespace(text=" Um, I I went.", start=0.4, end=1.6, words=words)
+            segment = SimpleNamespace(text=verbatim_text, start=0.4, end=8.6, words=words)
             return iter([segment]), SimpleNamespace(language="en")
 
     fake_model = FakeModel()
@@ -112,7 +124,10 @@ async def test_faster_whisper_preserves_text_and_removes_temporary_file() -> Non
         prompt="verbatim",
     )
 
-    assert result.text == "Um, I I went."
-    assert [word.text for word in result.words][:3] == [" Um", " I", " I"]
+    assert result.text == verbatim_text.strip()
+    assert "I go, I went to, I went to" in result.text
+    assert "I meet" in result.text
+    assert "we, we" in result.text
+    assert [word.text for word in result.words] == [" Um", " I"]
     assert fake_model.path is not None
     assert not Path(fake_model.path).exists()

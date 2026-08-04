@@ -24,12 +24,17 @@ class Settings(BaseSettings):
     ollama_keep_alive: str = "10m"
     ollama_evaluation_max_output_tokens: int = Field(default=2_400, ge=1_600, le=8_000)
     ollama_higher_answer_max_output_tokens: int = Field(default=900, ge=500, le=2_000)
-    whisper_model: str = "base.en"
+    whisper_model: str = "small.en"
     whisper_device: Literal["cpu"] = "cpu"
     whisper_compute_type: Literal["int8"] = "int8"
     whisper_cpu_threads: int = Field(default=4, ge=1, le=32)
     whisper_language: Literal["en"] = "en"
     whisper_local_files_only: bool = True
+    whisper_vad_enabled: bool = True
+    whisper_vad_threshold: float = Field(default=0.35, ge=0.0, le=1.0)
+    whisper_vad_min_speech_duration_ms: int = Field(default=0, ge=0, le=10_000)
+    whisper_vad_min_silence_duration_ms: int = Field(default=1_000, ge=0, le=10_000)
+    whisper_vad_speech_pad_ms: int = Field(default=500, ge=0, le=5_000)
     app_environment: Literal["development", "test", "production"] = "development"
     usage_log_enabled: bool = False
     evaluation_prompt_version: Literal["v1", "v2"] = "v2"

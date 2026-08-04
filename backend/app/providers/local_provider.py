@@ -111,12 +111,22 @@ class FasterWhisperProvider(TranscriptionProvider):
             segments_iter, _info = model.transcribe(
                 path,
                 language=self._settings.whisper_language,
+                task="transcribe",
                 beam_size=5,
                 temperature=0.0,
-                condition_on_previous_text=True,
+                condition_on_previous_text=False,
                 word_timestamps=True,
-                vad_filter=True,
-                vad_parameters={"min_silence_duration_ms": 500},
+                vad_filter=self._settings.whisper_vad_enabled,
+                vad_parameters={
+                    "threshold": self._settings.whisper_vad_threshold,
+                    "min_speech_duration_ms": (
+                        self._settings.whisper_vad_min_speech_duration_ms
+                    ),
+                    "min_silence_duration_ms": (
+                        self._settings.whisper_vad_min_silence_duration_ms
+                    ),
+                    "speech_pad_ms": self._settings.whisper_vad_speech_pad_ms,
+                },
             )
             segment_values = list(segments_iter)
         except ProviderUnavailableError:

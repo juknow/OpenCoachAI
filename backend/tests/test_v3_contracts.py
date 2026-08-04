@@ -20,7 +20,7 @@ def test_v3_transcription_returns_raw_text_and_deterministic_metrics(
     assert payload["rawTranscript"] == fake_provider.transcription_text
     assert payload["speechMetrics"]["wordCount"] == 6
     assert payload["speechMetrics"]["fillerWords"] == [{"word": "um", "count": 1}]
-    assert payload["model"] == "base.en"
+    assert payload["model"] == "small.en"
 
 
 def test_v3_evaluation_uses_confirmed_transcript_without_overwriting_raw(

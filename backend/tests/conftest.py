@@ -22,7 +22,7 @@ class FakeProvider:
 
     async def transcribe(self, **kwargs) -> ProviderTranscription:
         self.transcription_calls.append(kwargs)
-        return ProviderTranscription(text=self.transcription_text, model="base.en")
+        return ProviderTranscription(text=self.transcription_text, model="small.en")
 
     async def evaluate(self, **kwargs) -> ProviderEvaluation:
         self.evaluation_calls.append(kwargs)
