@@ -18,11 +18,12 @@ class Settings(BaseSettings):
     ai_provider: Literal["local"] = "local"
     ollama_base_url: str = "http://127.0.0.1:11434"
     ollama_model: str = "qwen3:4b"
-    ollama_context_length: int = Field(default=4_096, ge=2_048, le=32_768)
+    ollama_context_length: int = Field(default=8_192, ge=2_048, le=32_768)
     ollama_max_concurrent_evaluations: int = Field(default=1, ge=1, le=8)
-    ollama_timeout_seconds: float = Field(default=180, ge=10, le=600)
+    ollama_timeout_seconds: float = Field(default=300, ge=10, le=600)
+    ollama_invalid_response_max_retries: int = Field(default=1, ge=0, le=3)
     ollama_keep_alive: str = "10m"
-    ollama_evaluation_max_output_tokens: int = Field(default=2_400, ge=1_600, le=8_000)
+    ollama_evaluation_max_output_tokens: int = Field(default=4_000, ge=1_600, le=8_000)
     ollama_higher_answer_max_output_tokens: int = Field(default=900, ge=500, le=2_000)
     whisper_model: str = "small.en"
     whisper_device: Literal["cpu"] = "cpu"

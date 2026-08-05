@@ -23,7 +23,7 @@ from app.services.evaluation_service import (
     EvaluationService,
     count_improvement_sentences,
     count_improvement_words,
-    validate_improvement_sentences,
+    normalize_improvement_sentences,
 )
 from app.usage_telemetry import record_server_cache_event
 
@@ -174,7 +174,15 @@ class EvaluationV2Service:
             output = CompactEvaluationV2Output.model_validate(
                 provider_result.output.model_dump()
             )
-            validate_improvement_sentences(output.base_answer, minimum=10, maximum=12)
+            output = output.model_copy(
+                update={
+                    "base_answer": normalize_improvement_sentences(
+                        output.base_answer,
+                        minimum=10,
+                        maximum=12,
+                    )
+                }
+            )
             return EvaluationV2Response(
                 evaluation=compact_to_v2(output, request),
                 metadata=ResponseMetadata(
@@ -277,7 +285,15 @@ class HigherAnswerService:
             output = CompactHigherAnswerOutput.model_validate(
                 provider_result.output.model_dump()
             )
-            validate_improvement_sentences(output.sentences, minimum=12, maximum=15)
+            output = output.model_copy(
+                update={
+                    "sentences": normalize_improvement_sentences(
+                        output.sentences,
+                        minimum=12,
+                        maximum=15,
+                    )
+                }
+            )
             return HigherAnswerResponse(
                 answer=_answer(output.sentences, "next"),
                 metadata=ResponseMetadata(

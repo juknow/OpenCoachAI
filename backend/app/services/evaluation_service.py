@@ -44,6 +44,24 @@ def validate_improvement_sentences(
         raise ProviderResponseError("INVALID_IMPROVEMENT_ANSWER")
 
 
+def normalize_improvement_sentences(
+    sentences: list[str], *, minimum: int, maximum: int
+) -> list[str]:
+    normalized: list[str] = []
+    for item in sentences:
+        for match in SENTENCE_PATTERN.findall(item.strip()):
+            sentence = match.strip()
+            if sentence and not re.search(r"[.!?][\"']?$", sentence):
+                sentence = f"{sentence}."
+            if sentence:
+                normalized.append(sentence)
+
+    if len(normalized) > maximum:
+        normalized = [*normalized[: maximum - 1], normalized[-1]]
+    validate_improvement_sentences(normalized, minimum=minimum, maximum=maximum)
+    return normalized
+
+
 def dimension_payload(value: CompactDimension) -> dict[str, object]:
     return {"score": value.score, "reason": value.feedback}
 

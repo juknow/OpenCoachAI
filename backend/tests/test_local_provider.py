@@ -23,7 +23,7 @@ async def test_ollama_provider_uses_structured_non_thinking_request(caplog) -> N
         assert payload["stream"] is False
         assert payload["options"] == {
             "temperature": 0,
-            "num_ctx": 4096,
+            "num_ctx": 8192,
             "num_predict": 900,
         }
         assert payload["format"]["type"] == "object"
@@ -64,8 +64,12 @@ async def test_ollama_provider_uses_structured_non_thinking_request(caplog) -> N
 
 @pytest.mark.asyncio
 async def test_ollama_provider_rejects_truncated_structured_output() -> None:
-    transport = httpx.MockTransport(
-        lambda _request: httpx.Response(
+    request_count = 0
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        nonlocal request_count
+        request_count += 1
+        return httpx.Response(
             200,
             json={
                 "model": "qwen3:4b",
@@ -73,6 +77,9 @@ async def test_ollama_provider_rejects_truncated_structured_output() -> None:
                 "done_reason": "length",
             },
         )
+
+    transport = httpx.MockTransport(
+        handler
     )
     provider = OllamaProvider(Settings(_env_file=None), transport=transport)
     with pytest.raises(ProviderResponseError, match="EVALUATION_OUTPUT_TRUNCATED"):
@@ -81,6 +88,50 @@ async def test_ollama_provider_rejects_truncated_structured_output() -> None:
             user_payload={},
             response_model=CompactHigherAnswerOutput,
         )
+    assert request_count == 2
+
+
+@pytest.mark.asyncio
+async def test_ollama_provider_retries_one_invalid_structured_response() -> None:
+    fixture = higher_answer_output()
+    request_bodies: list[dict[str, object]] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        request_bodies.append(json.loads(request.content))
+        if len(request_bodies) == 1:
+            return httpx.Response(
+                200,
+                json={
+                    "model": "qwen3:4b",
+                    "message": {"content": "{}"},
+                    "done": True,
+                },
+            )
+        return httpx.Response(
+            200,
+            json={
+                "model": "qwen3:4b",
+                "message": {"content": fixture.model_dump_json(by_alias=True)},
+                "done": True,
+                "prompt_eval_count": 400,
+                "eval_count": 500,
+            },
+        )
+
+    provider = OllamaProvider(
+        Settings(_env_file=None),
+        transport=httpx.MockTransport(handler),
+    )
+    result = await provider.evaluate(
+        system_prompt="prompt",
+        user_payload={"transcript": "a long answer"},
+        response_model=CompactHigherAnswerOutput,
+    )
+
+    assert result.output == fixture
+    assert len(request_bodies) == 2
+    assert len(request_bodies[1]["messages"]) == 3
+    assert "complete JSON object again" in request_bodies[1]["messages"][-1]["content"]
 
 
 @pytest.mark.asyncio

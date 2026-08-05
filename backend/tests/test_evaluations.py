@@ -16,6 +16,7 @@ from app.services.evaluation_service import (
     compact_to_public,
     count_improvement_sentences,
     count_improvement_words,
+    normalize_improvement_sentences,
 )
 from tests.conftest import FakeProvider
 from tests.helpers import evaluation_output, evaluation_request
@@ -189,6 +190,21 @@ def test_truncated_output_uses_specific_api_error_contract(
     assert response.status_code == 502
     assert response.json()["error"]["code"] == "AI_OUTPUT_TRUNCATED"
     assert len(fake_provider.evaluation_calls) == 1
+
+
+def test_improvement_answer_minor_format_errors_are_normalized() -> None:
+    sentences = evaluation_output().base_answer
+    malformed = [
+        f"{sentences[0]} {sentences[1]}",
+        *sentences[2:-1],
+        sentences[-1].removesuffix("."),
+    ]
+
+    normalized = normalize_improvement_sentences(malformed, minimum=10, maximum=12)
+
+    assert len(normalized) == 10
+    assert normalized[-1].endswith(".")
+    assert count_improvement_sentences(normalized) == 10
 
 
 @pytest.mark.asyncio

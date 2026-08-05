@@ -239,46 +239,69 @@ class OllamaProvider(EvaluationProvider):
             },
         }
         timeout = httpx.Timeout(self._settings.ollama_timeout_seconds)
-        try:
-            async with self._semaphore, httpx.AsyncClient(
-                timeout=timeout, transport=self._transport
-            ) as client:
-                response = await client.post(
-                    f"{self._settings.ollama_base_url.rstrip('/')}/api/chat",
-                    json=body,
+        retry_count = 0
+        output: OutputModel | None = None
+        payload: dict[str, Any] = {}
+        while output is None:
+            try:
+                async with self._semaphore, httpx.AsyncClient(
+                    timeout=timeout, transport=self._transport
+                ) as client:
+                    response = await client.post(
+                        f"{self._settings.ollama_base_url.rstrip('/')}/api/chat",
+                        json=body,
+                    )
+                    response.raise_for_status()
+                    payload = response.json()
+            except httpx.TimeoutException as error:
+                self._record_failure(request_type, started, "OLLAMA_TIMEOUT", retry_count)
+                raise ProviderUnavailableError("OLLAMA_TIMEOUT") from error
+            except httpx.ConnectError as error:
+                self._record_failure(request_type, started, "OLLAMA_UNAVAILABLE", retry_count)
+                raise ProviderUnavailableError("OLLAMA_UNAVAILABLE") from error
+            except httpx.HTTPStatusError as error:
+                code = (
+                    "OLLAMA_MODEL_UNAVAILABLE"
+                    if error.response.status_code == 404
+                    else "OLLAMA_ERROR"
                 )
-                response.raise_for_status()
-                payload = response.json()
-        except httpx.TimeoutException as error:
-            self._record_failure(request_type, started, "OLLAMA_TIMEOUT")
-            raise ProviderUnavailableError("OLLAMA_TIMEOUT") from error
-        except httpx.ConnectError as error:
-            self._record_failure(request_type, started, "OLLAMA_UNAVAILABLE")
-            raise ProviderUnavailableError("OLLAMA_UNAVAILABLE") from error
-        except httpx.HTTPStatusError as error:
-            code = (
-                "OLLAMA_MODEL_UNAVAILABLE"
-                if error.response.status_code == 404
-                else "OLLAMA_ERROR"
-            )
-            self._record_failure(request_type, started, code)
-            raise ProviderUnavailableError(code) from error
-        except (httpx.HTTPError, ValueError) as error:
-            self._record_failure(request_type, started, "OLLAMA_ERROR")
-            raise ProviderUnavailableError("OLLAMA_ERROR") from error
+                self._record_failure(request_type, started, code, retry_count)
+                raise ProviderUnavailableError(code) from error
+            except (httpx.HTTPError, ValueError) as error:
+                self._record_failure(request_type, started, "OLLAMA_ERROR", retry_count)
+                raise ProviderUnavailableError("OLLAMA_ERROR") from error
 
-        if payload.get("done_reason") == "length":
-            self._record_failure(request_type, started, "EVALUATION_OUTPUT_TRUNCATED")
-            raise ProviderResponseError("EVALUATION_OUTPUT_TRUNCATED")
-        content = payload.get("message", {}).get("content")
-        if not isinstance(content, str) or not content.strip():
-            self._record_failure(request_type, started, "INVALID_EVALUATION_RESPONSE")
-            raise ProviderResponseError("INVALID_EVALUATION_RESPONSE")
-        try:
-            output = response_model.model_validate_json(content)
-        except (ValidationError, ValueError) as error:
-            self._record_failure(request_type, started, "INVALID_EVALUATION_RESPONSE")
-            raise ProviderResponseError("INVALID_EVALUATION_RESPONSE") from error
+            response_error = "EVALUATION_OUTPUT_TRUNCATED"
+            validation_error: ValidationError | ValueError | None = None
+            if payload.get("done_reason") != "length":
+                content = payload.get("message", {}).get("content")
+                if isinstance(content, str) and content.strip():
+                    try:
+                        output = response_model.model_validate_json(content)
+                    except (ValidationError, ValueError) as error:
+                        validation_error = error
+                        response_error = "INVALID_EVALUATION_RESPONSE"
+                else:
+                    response_error = "INVALID_EVALUATION_RESPONSE"
+
+            if output is not None:
+                break
+            if retry_count >= self._settings.ollama_invalid_response_max_retries:
+                self._record_failure(request_type, started, response_error, retry_count)
+                raise ProviderResponseError(response_error) from validation_error
+
+            retry_count += 1
+            body["messages"] = [
+                *body["messages"],
+                {
+                    "role": "user",
+                    "content": (
+                        "Generate the complete JSON object again. Follow the schema exactly, "
+                        "keep every feedback field concise, and make every answer-array item "
+                        "exactly one complete English sentence ending in punctuation."
+                    ),
+                },
+            ]
 
         input_tokens = max(0, int(payload.get("prompt_eval_count", 0) or 0))
         output_tokens = max(0, int(payload.get("eval_count", 0) or 0))
@@ -293,7 +316,7 @@ class OllamaProvider(EvaluationProvider):
                 model=str(payload.get("model") or self._settings.ollama_model),
                 latency_ms=round((perf_counter() - started) * 1000),
                 success=True,
-                retry_count=0,
+                retry_count=retry_count,
                 usage=usage,
             ),
             enabled=self._settings.detailed_usage_logging_enabled,
@@ -304,14 +327,20 @@ class OllamaProvider(EvaluationProvider):
             usage=usage,
         )
 
-    def _record_failure(self, request_type: str, started: float, code: str) -> None:
+    def _record_failure(
+        self,
+        request_type: str,
+        started: float,
+        code: str,
+        retry_count: int = 0,
+    ) -> None:
         record_usage_event(
             usage_event(
                 request_type=request_type,
                 model=self._settings.ollama_model,
                 latency_ms=round((perf_counter() - started) * 1000),
                 success=False,
-                retry_count=0,
+                retry_count=retry_count,
                 error_type=code,
             ),
             enabled=self._settings.detailed_usage_logging_enabled,

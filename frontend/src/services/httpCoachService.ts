@@ -29,6 +29,7 @@ import {
   toApiSpeechMetrics,
 } from './transcriptMetricsService.ts'
 
+const LOCAL_AI_GENERATION_TIMEOUT_MS = 660_000
 const MAX_AUDIO_BYTES = 900_000
 
 const MIME_EXTENSIONS: Record<string, string> = {
@@ -244,11 +245,15 @@ export const httpCoachService: CoachService = {
       speechMetrics: toApiSpeechMetrics(input.transcript),
       previousAttempt: previousAttemptForApi(input),
     }
-    const response = await requestApi<EvaluationResponse>('/api/v3/evaluations', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    })
+    const response = await requestApi<EvaluationResponse>(
+      '/api/v3/evaluations',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      },
+      LOCAL_AI_GENERATION_TIMEOUT_MS,
+    )
     onProgress?.('improve')
     return mapEvaluation(response)
   },
@@ -280,6 +285,7 @@ export const httpCoachService: CoachService = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       },
+      LOCAL_AI_GENERATION_TIMEOUT_MS,
     )
     return {
       variant: 'next',

@@ -129,6 +129,44 @@ def test_local_evaluation_fixture_fits_configured_context_budget() -> None:
     assert estimated_total <= settings.ollama_context_length
 
 
+def test_two_minute_answer_has_room_for_full_configured_output() -> None:
+    long_transcript = " ".join(
+        [
+            (
+                "Um, last weekend I went to a neighborhood park with my close friend, "
+                "and we walked around the lake while talking about school and our plans."
+            )
+        ]
+        * 14
+    )
+    payload = evaluation_request()
+    payload["transcript"] = long_transcript
+    payload["speechMetrics"]["durationSeconds"] = 120
+    payload["speechMetrics"]["wordCount"] = len(long_transcript.split())
+    payload["speechMetrics"]["wordsPerMinute"] = round(len(long_transcript.split()) / 2)
+    payload["speechMetrics"]["opening20SecondEstimate"] = long_transcript[:500]
+    request = EvaluationRequest.model_validate(payload)
+    settings = Settings(_env_file=None)
+    input_parts = [
+        CORE_PROMPT_PATH.read_text(encoding="utf-8").strip(),
+        json.dumps(
+            CompactEvaluationV2Output.model_json_schema(by_alias=True),
+            ensure_ascii=False,
+            separators=(",", ":"),
+        ),
+        json.dumps(
+            EvaluationV2Service._ai_payload(request),
+            ensure_ascii=False,
+            separators=(",", ":"),
+        ),
+    ]
+    required_context = sum(estimate_tokens_offline(part) for part in input_parts)
+    required_context += settings.evaluation_max_output_tokens
+
+    assert required_context > 4_096
+    assert required_context <= settings.ollama_context_length
+
+
 def test_explicit_cache_breakpoint_has_an_eligible_stable_prefix() -> None:
     stable_prefix = [
         CORE_PROMPT_PATH.read_text(encoding="utf-8").strip(),
