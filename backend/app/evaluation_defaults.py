@@ -45,12 +45,57 @@ STRUCTURES: dict[QuestionType, list[tuple[str, str]]] = {
     ],
 }
 
+RETRY_MISSIONS: dict[QuestionType, list[str]] = {
+    QuestionType.DESCRIPTION: [
+        "첫 1~2문장에서 설명할 대상을 분명하게 소개하세요.",
+        "장소나 대상의 구체적인 특징을 두 가지 이상 덧붙이세요.",
+        "마지막에 좋아하는 이유와 개인적인 느낌을 말하세요.",
+    ],
+    QuestionType.ROUTINE: [
+        "언제 무엇을 하는지 첫 문장에서 요약하세요.",
+        "first, then, finally 같은 표현으로 행동 순서를 연결하세요.",
+        "그 습관을 반복하는 이유나 효과로 마무리하세요.",
+    ],
+    QuestionType.PAST_EXPERIENCE: [
+        "언제 어디서 누구와 있었는지 배경을 먼저 밝히세요.",
+        "first, after that, finally로 사건의 세 단계를 연결하세요.",
+        "결과와 당시 느낀 감정을 구체적으로 말하세요.",
+    ],
+    QuestionType.COMPARISON_CHANGE: [
+        "비교할 두 대상이나 과거와 현재를 먼저 소개하세요.",
+        "가장 중요한 차이를 구체적인 근거와 함께 설명하세요.",
+        "더 선호하는 쪽과 그 이유를 분명하게 말하세요.",
+    ],
+    QuestionType.ROLE_PLAY: [
+        "현재 상황과 필요한 목적을 첫 문장에서 밝히세요.",
+        "요청된 질문이나 전달 사항을 하나씩 빠짐없이 말하세요.",
+        "확인과 감사 표현으로 대화를 자연스럽게 끝내세요.",
+    ],
+    QuestionType.PROBLEM_SOLUTION: [
+        "발생한 문제와 영향을 구체적으로 설명하세요.",
+        "실행 가능한 해결책을 하나 이상 제안하세요.",
+        "원하는 결과와 다음 행동을 확인하며 마무리하세요.",
+    ],
+}
+
 
 def reusable_structure_for(question_type: QuestionType) -> list[ReusableStructureStep]:
     return [
         ReusableStructureStep(step=index, title_korean=title, explanation_korean=explanation)
         for index, (title, explanation) in enumerate(STRUCTURES[question_type], start=1)
     ]
+
+
+def korean_retry_missions_for(
+    generated_missions: list[str],
+    question_type: QuestionType,
+) -> list[str]:
+    if len(generated_missions) == 3 and all(
+        any("가" <= character <= "힣" for character in mission)
+        for mission in generated_missions
+    ):
+        return generated_missions
+    return list(RETRY_MISSIONS[question_type])
 
 
 SAFETY_NOTICE = (

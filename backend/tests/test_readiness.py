@@ -38,7 +38,7 @@ def test_local_readiness_reports_models_without_loading_or_calling_them(monkeypa
         "ollama": {
             "running": True,
             "modelAvailable": True,
-            "model": "qwen3:4b",
+            "model": "qwen3:8b",
         },
         "whisper": {
             "libraryAvailable": True,

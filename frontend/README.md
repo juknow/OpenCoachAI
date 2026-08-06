@@ -15,7 +15,7 @@ npm run dev
 ```
 
 Open `http://127.0.0.1:5173`. The connection dialog reports whether Ollama,
-`qwen3:4b`, faster-whisper, and `small.en` are ready. Demo Mode remains available
+`qwen3:8b`, faster-whisper, and `small.en` are ready. Demo Mode remains available
 without either local model.
 
 ## Verify

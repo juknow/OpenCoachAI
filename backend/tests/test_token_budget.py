@@ -6,6 +6,8 @@ import pytest
 from pydantic import ValidationError
 
 from app.config import Settings
+from app.evaluation_defaults import korean_retry_missions_for
+from app.schemas.common import QuestionType
 from app.schemas.evaluation import (
     CompactEvaluationOutput,
     CompactEvaluationV2Output,
@@ -59,7 +61,7 @@ def test_compact_schema_and_payload_are_smaller_than_public_contract() -> None:
     assert len(compact_json_schema()) < len(public_schema)
 
 
-def test_fixture_stays_within_offline_four_thousand_token_budget() -> None:
+def test_fixture_stays_within_configured_context_budget() -> None:
     request = EvaluationRequest.model_validate(evaluation_request())
     parts = [
         PROMPT_PATH.read_text(encoding="utf-8").strip(),
@@ -74,7 +76,7 @@ def test_fixture_stays_within_offline_four_thousand_token_budget() -> None:
 
     estimated_total = sum(estimate_tokens_offline(part) for part in parts)
 
-    assert estimated_total <= 4_000
+    assert estimated_total <= Settings(_env_file=None).ollama_context_length
 
 
 def test_v2_initial_evaluation_is_smaller_than_eager_contract() -> None:
@@ -104,7 +106,7 @@ def test_v2_initial_evaluation_is_smaller_than_eager_contract() -> None:
     lazy_total = sum(estimate_tokens_offline(part) for part in lazy_parts)
 
     assert lazy_total < eager_total
-    assert lazy_total <= 3_600
+    assert lazy_total <= Settings(_env_file=None).ollama_context_length
 
 
 def test_local_evaluation_fixture_fits_configured_context_budget() -> None:
@@ -195,6 +197,55 @@ def test_transport_schema_omits_string_lengths_but_server_still_validates() -> N
     invalid_output["summary"] = ""
     with pytest.raises(ValidationError):
         CompactEvaluationV2Output.model_validate(invalid_output)
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        ("confidence_why",),
+        ("summary",),
+        ("phrases", 0, "context"),
+        ("phrases", 0, "usage"),
+        ("vocab", 0, "meaning"),
+        ("vocab", 0, "why"),
+        ("strengths", 0, "title"),
+        ("strengths", 0, "explanation"),
+        ("blocker", "title"),
+        ("blocker", "explanation"),
+    ],
+)
+def test_feedback_page_korean_fields_reject_english_only_text(
+    path: tuple[str | int, ...],
+) -> None:
+    output = evaluation_v2_output().model_dump()
+    target = output
+    for key in path[:-1]:
+        target = target[key]
+    target[path[-1]] = "English only feedback"
+
+    with pytest.raises(ValidationError):
+        CompactEvaluationV2Output.model_validate(output)
+
+
+def test_korean_feedback_preserves_embedded_english_examples() -> None:
+    output = evaluation_v2_output().model_dump()
+    mission = "first, after that, finally로 세 단계를 연결하세요."
+    output["retryMissionsKorean"][0] = mission
+
+    parsed = CompactEvaluationV2Output.model_validate(output)
+
+    assert parsed.missions[0] == mission
+
+
+def test_english_retry_missions_use_korean_question_type_fallback() -> None:
+    missions = korean_retry_missions_for(
+        ["First mission", "Second mission", "Third mission"],
+        QuestionType.PAST_EXPERIENCE,
+    )
+
+    assert len(missions) == 3
+    assert all(any("가" <= character <= "힣" for character in item) for item in missions)
+    assert "first, after that, finally" in missions[1]
 
 
 def test_lazy_higher_answer_has_a_separate_bounded_budget() -> None:

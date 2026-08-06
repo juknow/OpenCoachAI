@@ -273,14 +273,25 @@ class OllamaProvider(EvaluationProvider):
 
             response_error = "EVALUATION_OUTPUT_TRUNCATED"
             validation_error: ValidationError | ValueError | None = None
+            invalid_fields: list[str] = []
+            invalid_content: str | None = None
             if payload.get("done_reason") != "length":
                 content = payload.get("message", {}).get("content")
                 if isinstance(content, str) and content.strip():
                     try:
                         output = response_model.model_validate_json(content)
                     except (ValidationError, ValueError) as error:
+                        invalid_content = content
                         validation_error = error
                         response_error = "INVALID_EVALUATION_RESPONSE"
+                        if isinstance(error, ValidationError):
+                            invalid_fields = [
+                                ".".join(str(part) for part in item["loc"])
+                                for item in error.errors(
+                                    include_url=False,
+                                    include_input=False,
+                                )
+                            ]
                 else:
                     response_error = "INVALID_EVALUATION_RESPONSE"
 
@@ -291,17 +302,24 @@ class OllamaProvider(EvaluationProvider):
                 raise ProviderResponseError(response_error) from validation_error
 
             retry_count += 1
-            body["messages"] = [
-                *body["messages"],
+            retry_messages: list[dict[str, str]] = []
+            if invalid_content is not None:
+                retry_messages.append({"role": "assistant", "content": invalid_content})
+            retry_messages.append(
                 {
                     "role": "user",
                     "content": (
-                        "Generate the complete JSON object again. Follow the schema exactly, "
-                        "keep every feedback field concise, and make every answer-array item "
-                        "exactly one complete English sentence ending in punctuation."
+                        "방금 JSON 전체를 스키마에 맞게 다시 출력하세요. 피드백, 설명, "
+                        "상황 라벨, 단어 뜻, 강점과 blocker 제목, retry mission은 반드시 "
+                        "자연스러운 한국어로 고쳐서 한글을 포함하세요. 한국어 문장 안의 "
+                        "영어 예시 표현은 번역하지 말고 그대로 유지하세요. 추천 표현, 예문, "
+                        "교정 전후 문장, 개선 답변과 전사 인용은 영어로 유지하세요. 각 답변 "
+                        "배열 항목은 문장부호로 끝나는 완전한 영어 한 문장이어야 합니다. "
+                        f"반드시 고쳐야 할 필드: {', '.join(invalid_fields) or '전체 JSON'}"
                     ),
-                },
-            ]
+                }
+            )
+            body["messages"] = [*body["messages"], *retry_messages]
 
         input_tokens = max(0, int(payload.get("prompt_eval_count", 0) or 0))
         output_tokens = max(0, int(payload.get("eval_count", 0) or 0))

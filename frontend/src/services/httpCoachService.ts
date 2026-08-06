@@ -29,7 +29,7 @@ import {
   toApiSpeechMetrics,
 } from './transcriptMetricsService.ts'
 
-const LOCAL_AI_GENERATION_TIMEOUT_MS = 660_000
+const LOCAL_AI_GENERATION_TIMEOUT_MS = 1_260_000
 const MAX_AUDIO_BYTES = 900_000
 
 const MIME_EXTENSIONS: Record<string, string> = {

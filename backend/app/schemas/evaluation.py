@@ -1,6 +1,7 @@
+import re
 from typing import Annotated, Any, Literal
 
-from pydantic import Field, field_validator
+from pydantic import AfterValidator, Field, field_validator
 
 from app.schemas.common import (
     ApiModel,
@@ -213,8 +214,56 @@ class Correction(ApiModel):
     explanation_korean: str
 
 
-ShortKorean = Annotated[str, Field(min_length=1, max_length=180)]
-SummaryKorean = Annotated[str, Field(min_length=1, max_length=260)]
+def _must_include_korean(value: str) -> str:
+    if not re.search(r"[가-힣]", value):
+        raise ValueError("Korean feedback must include at least one Hangul syllable")
+    return value
+
+
+ShortKorean = Annotated[
+    str,
+    Field(
+        min_length=1,
+        max_length=180,
+        description="한글을 포함한 자연스러운 한국어. 문장 안의 영어 예시는 원문 유지.",
+    ),
+    AfterValidator(_must_include_korean),
+]
+SummaryKorean = Annotated[
+    str,
+    Field(
+        min_length=1,
+        max_length=260,
+        description="한글을 포함한 자연스러운 한국어. 문장 안의 영어 예시는 원문 유지.",
+    ),
+    AfterValidator(_must_include_korean),
+]
+KoreanLabel = Annotated[
+    str,
+    Field(
+        min_length=1,
+        max_length=100,
+        description="한글을 포함한 짧은 한국어 라벨. 영어 예시는 원문 유지.",
+    ),
+    AfterValidator(_must_include_korean),
+]
+KoreanMeaning = Annotated[
+    str,
+    Field(
+        min_length=1,
+        max_length=80,
+        description="한글을 포함한 짧은 한국어. 영어 표현은 원문 유지.",
+    ),
+    AfterValidator(_must_include_korean),
+]
+MissionText = Annotated[
+    str,
+    Field(
+        min_length=1,
+        max_length=180,
+        description="한글로 작성한 재도전 과제. 영어 예시 표현은 원문 유지.",
+    ),
+]
 ShortEnglish = Annotated[str, Field(min_length=1, max_length=240)]
 TagText = Annotated[str, Field(min_length=1, max_length=80)]
 
@@ -254,7 +303,7 @@ class CompactDelivery(ApiModel):
 
 
 class CompactPhrase(ApiModel):
-    context: Annotated[str, Field(min_length=1, max_length=100)]
+    context: KoreanLabel
     phrase: Annotated[str, Field(min_length=1, max_length=120)]
     usage: ShortKorean
 
@@ -262,13 +311,13 @@ class CompactPhrase(ApiModel):
 class CompactVocabulary(ApiModel):
     category: Literal["topic", "feeling", "action", "connector"]
     phrase: Annotated[str, Field(min_length=1, max_length=100)]
-    meaning: Annotated[str, Field(min_length=1, max_length=80)]
+    meaning: KoreanMeaning
     why: ShortKorean
     example: ShortEnglish
 
 
 class CompactEvidence(ApiModel):
-    title: Annotated[str, Field(min_length=1, max_length=80)]
+    title: KoreanMeaning
     explanation: ShortKorean
     evidence: Annotated[str, Field(min_length=1, max_length=180)]
 
@@ -291,7 +340,12 @@ class CompactEvaluationCore(StructuredModelOutput):
     strengths: list[CompactEvidence] = Field(max_length=3)
     blocker: CompactEvidence
     corrections: list[CompactCorrection] = Field(max_length=5)
-    missions: list[ShortKorean] = Field(min_length=3, max_length=3)
+    missions: list[MissionText] = Field(
+        min_length=3,
+        max_length=3,
+        alias="retryMissionsKorean",
+        description="한글로 작성한 개인 맞춤 재도전 과제 3개.",
+    )
 
 
 class CompactEvaluationV2Output(CompactEvaluationCore):

@@ -15,7 +15,7 @@ Copy-Item .env.example .env
 Install the Windows Ollama application, then explicitly download the configured LLM:
 
 ```powershell
-ollama pull qwen3:4b
+ollama pull qwen3:8b
 ```
 
 Download the faster-whisper model once. Runtime auto-download is disabled so a
@@ -29,10 +29,10 @@ Keep these defaults in `backend/.env` for the confirmed machine profile:
 
 ```dotenv
 AI_PROVIDER=local
-OLLAMA_MODEL=qwen3:4b
+OLLAMA_MODEL=qwen3:8b
 OLLAMA_CONTEXT_LENGTH=8192
 OLLAMA_MAX_CONCURRENT_EVALUATIONS=1
-OLLAMA_TIMEOUT_SECONDS=300
+OLLAMA_TIMEOUT_SECONDS=600
 OLLAMA_INVALID_RESPONSE_MAX_RETRIES=1
 OLLAMA_EVALUATION_MAX_OUTPUT_TOKENS=4000
 WHISPER_MODEL=small.en

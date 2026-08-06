@@ -4,7 +4,12 @@ import json
 from app.config import Settings
 from app.errors import ProviderResponseError
 from app.evaluation_cache import ResultCache
-from app.evaluation_defaults import SAFETY_NOTICE, estimated_range_for, reusable_structure_for
+from app.evaluation_defaults import (
+    SAFETY_NOTICE,
+    estimated_range_for,
+    korean_retry_missions_for,
+    reusable_structure_for,
+)
 from app.providers.base import EvaluationProvider
 from app.schemas.common import ResponseMetadata
 from app.schemas.evaluation import (
@@ -180,7 +185,11 @@ class EvaluationV2Service:
                         output.base_answer,
                         minimum=10,
                         maximum=12,
-                    )
+                    ),
+                    "missions": korean_retry_missions_for(
+                        output.missions,
+                        request.question.type,
+                    ),
                 }
             )
             return EvaluationV2Response(

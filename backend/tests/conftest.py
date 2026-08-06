@@ -37,7 +37,7 @@ class FakeProvider:
             output = evaluation_output()
         return ProviderEvaluation(
             output=output,
-            model="qwen3:4b",
+            model="qwen3:8b",
             usage=UsageMetadata(
                 input_tokens=120,
                 output_tokens=340,

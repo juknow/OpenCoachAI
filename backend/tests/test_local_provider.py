@@ -18,7 +18,7 @@ async def test_ollama_provider_uses_structured_non_thinking_request(caplog) -> N
 
     def handler(request: httpx.Request) -> httpx.Response:
         payload = json.loads(request.content)
-        assert payload["model"] == "qwen3:4b"
+        assert payload["model"] == "qwen3:8b"
         assert payload["think"] is False
         assert payload["stream"] is False
         assert payload["options"] == {
@@ -30,7 +30,7 @@ async def test_ollama_provider_uses_structured_non_thinking_request(caplog) -> N
         return httpx.Response(
             200,
             json={
-                "model": "qwen3:4b",
+                "model": "qwen3:8b",
                 "message": {"content": fixture.model_dump_json(by_alias=True)},
                 "done": True,
                 "prompt_eval_count": 321,
@@ -72,7 +72,7 @@ async def test_ollama_provider_rejects_truncated_structured_output() -> None:
         return httpx.Response(
             200,
             json={
-                "model": "qwen3:4b",
+                "model": "qwen3:8b",
                 "message": {"content": '{"sentences": ['},
                 "done_reason": "length",
             },
@@ -102,7 +102,7 @@ async def test_ollama_provider_retries_one_invalid_structured_response() -> None
             return httpx.Response(
                 200,
                 json={
-                    "model": "qwen3:4b",
+                    "model": "qwen3:8b",
                     "message": {"content": "{}"},
                     "done": True,
                 },
@@ -110,7 +110,7 @@ async def test_ollama_provider_retries_one_invalid_structured_response() -> None
         return httpx.Response(
             200,
             json={
-                "model": "qwen3:4b",
+                "model": "qwen3:8b",
                 "message": {"content": fixture.model_dump_json(by_alias=True)},
                 "done": True,
                 "prompt_eval_count": 400,
@@ -130,8 +130,10 @@ async def test_ollama_provider_retries_one_invalid_structured_response() -> None
 
     assert result.output == fixture
     assert len(request_bodies) == 2
-    assert len(request_bodies[1]["messages"]) == 3
-    assert "complete JSON object again" in request_bodies[1]["messages"][-1]["content"]
+    assert len(request_bodies[1]["messages"]) == 4
+    assert request_bodies[1]["messages"][-2] == {"role": "assistant", "content": "{}"}
+    assert "자연스러운 한국어" in request_bodies[1]["messages"][-1]["content"]
+    assert "sentences" in request_bodies[1]["messages"][-1]["content"]
 
 
 @pytest.mark.asyncio
