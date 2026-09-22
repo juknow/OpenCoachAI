@@ -27,15 +27,15 @@ docs/
 ### 프로젝트를 처음 보는 사람
 
 1. [`../README.md`](../README.md)
-2. `architecture/system-overview.md`
-3. `architecture/transcription-pipeline.md`
+2. [`architecture/system-overview.md`](architecture/system-overview.md)
+3. [`architecture/transcription-pipeline.md`](architecture/transcription-pipeline.md)
 
 ### 녹음과 전사를 작업하는 사람
 
-1. `frontend/audio-recording.md`
-2. `backend/transcription-api.md`
-3. `ai/stt-domain-guide.md`
-4. `ai/stt-evaluation.md`
+1. [`frontend/audio-recording.md`](frontend/audio-recording.md)
+2. [`backend/transcription-api.md`](backend/transcription-api.md)
+3. [`ai/stt-domain-guide.md`](ai/stt-domain-guide.md)
+4. [`ai/stt-evaluation.md`](ai/stt-evaluation.md)
 
 ### 협업과 커밋 규칙을 확인하는 사람
 
@@ -48,7 +48,12 @@ docs/
 |---|---|---|
 | `legacy-site-handoff/` | 참고 자료 | 이전 구현을 옮길 때 만든 자료이며 현재 코드와 다를 수 있음 |
 | `contributing/git-convention.md` | 현재 규칙 | 앞으로 적용할 브랜치와 커밋 규칙 |
-| `architecture/`, `frontend/`, `backend/`, `ai/` | 작성 중 | 현재 React/FastAPI 구현을 기준으로 새로 정리하는 문서 |
+| `architecture/system-overview.md` | 현재 구현 | React, FastAPI, OpenAI를 연결하는 전체 흐름 |
+| `architecture/transcription-pipeline.md` | 현재 구현과 목표 | 녹음부터 전사 확인까지의 상세 흐름과 개선 기준 |
+| `frontend/audio-recording.md` | 현재 구현 | 브라우저 녹음 상태와 로컬 음성 지표 |
+| `backend/transcription-api.md` | 현재 구현 | 전사 API 계약, 검증, provider, 오류 |
+| `ai/stt-domain-guide.md` | 도메인 안내 | OPIc 전사에 필요한 STT 기초와 설계 원칙 |
+| `ai/stt-evaluation.md` | 목표 기준 | 모델과 prompt를 비교할 평가 방법 |
 
 ## 문서 관리 규칙
 
