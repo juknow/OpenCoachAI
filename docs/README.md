@@ -53,7 +53,7 @@ docs/
 | `frontend/audio-recording.md` | 현재 구현 | 브라우저 녹음 상태와 로컬 음성 지표 |
 | `backend/transcription-api.md` | 현재 구현 | 전사 API 계약, 검증, provider, 오류 |
 | `ai/stt-domain-guide.md` | 도메인 안내 | OPIc 전사에 필요한 STT 기초와 설계 원칙 |
-| `ai/stt-evaluation.md` | 목표 기준 | 모델과 prompt를 비교할 평가 방법 |
+| `ai/stt-evaluation.md` | 구현 중 | 모델과 prompt를 비교할 평가 방법과 현재 도구 상태 |
 
 ## 문서 관리 규칙
 
