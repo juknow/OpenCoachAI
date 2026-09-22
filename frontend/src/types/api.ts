@@ -16,9 +16,23 @@ export interface ConfigStatusResponse {
   openaiConfigured: boolean
 }
 
+export interface ApiUsageMetadata {
+  inputTokens: number
+  outputTokens: number
+  cachedInputTokens: number
+  cacheWriteTokens?: number
+  reasoningTokens?: number
+  totalTokens?: number
+}
+
 export interface TranscriptionResponse {
   transcript: string
-  requestId: string
+  metadata: {
+    requestId: string
+    model: string
+    usage: ApiUsageMetadata | null
+    audioSeconds: number | null
+  }
 }
 
 export interface ApiWordCount {
@@ -156,14 +170,7 @@ export interface EvaluationResponse {
   metadata: {
     requestId: string
     model: string
-    usage: {
-      inputTokens: number
-      outputTokens: number
-      cachedInputTokens: number
-      cacheWriteTokens?: number
-      reasoningTokens?: number
-      totalTokens?: number
-    } | null
+    usage: ApiUsageMetadata | null
   }
 }
 

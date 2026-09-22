@@ -22,7 +22,16 @@ class FakeProvider:
 
     async def transcribe(self, **kwargs) -> ProviderTranscription:
         self.transcription_calls.append(kwargs)
-        return ProviderTranscription(text=self.transcription_text, model="gpt-4o-mini-transcribe")
+        return ProviderTranscription(
+            text=self.transcription_text,
+            model="gpt-4o-mini-transcribe",
+            usage=UsageMetadata(
+                input_tokens=7,
+                output_tokens=4,
+                total_tokens=11,
+            ),
+            audio_seconds=12.5,
+        )
 
     async def evaluate(self, **kwargs) -> ProviderEvaluation:
         self.evaluation_calls.append(kwargs)

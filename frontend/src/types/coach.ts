@@ -77,6 +77,18 @@ export type RecordingPhase =
   | 'recorded'
   | 'error'
 
+export interface TranscriptionMetadata {
+  requestId: string
+  model: string
+  audioSeconds?: number
+  inputTokens?: number
+  outputTokens?: number
+  cachedInputTokens?: number
+  cacheWriteTokens?: number
+  reasoningTokens?: number
+  totalTokens?: number
+}
+
 export interface TranscriptResult {
   rawText: string
   editedText: string
@@ -86,7 +98,7 @@ export interface TranscriptResult {
   repeatedWordCount: number
   metrics: SpeechMetrics
   provider: CoachProvider
-  requestId?: string
+  metadata?: TranscriptionMetadata
 }
 
 export type RubricKey =

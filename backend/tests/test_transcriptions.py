@@ -18,7 +18,18 @@ def test_transcription_preserves_provider_text(
     assert response.status_code == 200
     payload = response.json()
     assert payload["transcript"] == fake_provider.transcription_text
-    assert payload["requestId"]
+    metadata = payload["metadata"]
+    assert metadata["requestId"]
+    assert metadata["model"] == "gpt-4o-mini-transcribe"
+    assert metadata["usage"] == {
+        "inputTokens": 7,
+        "outputTokens": 4,
+        "cachedInputTokens": 0,
+        "cacheWriteTokens": 0,
+        "reasoningTokens": 0,
+        "totalTokens": 11,
+    }
+    assert metadata["audioSeconds"] == 12.5
     call = fake_provider.transcription_calls[0]
     assert call["mime_type"] == "audio/webm"
     assert "Preserve every audible filler" in str(call["prompt"])

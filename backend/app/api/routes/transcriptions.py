@@ -4,7 +4,7 @@ from app.api.dependencies import get_ai_provider, read_prompt
 from app.config import Settings, get_settings
 from app.errors import request_id_for
 from app.providers.base import AiProvider
-from app.schemas.transcription import TranscriptionResponse
+from app.schemas.transcription import TranscriptionMetadata, TranscriptionResponse
 from app.services.transcription_service import TranscriptionService
 
 router = APIRouter(prefix="/api", tags=["transcriptions"])
@@ -28,4 +28,12 @@ async def create_transcription(
         content_type=audio.content_type,
         duration_seconds=duration_seconds,
     )
-    return TranscriptionResponse(transcript=result.text, request_id=request_id_for(request))
+    return TranscriptionResponse(
+        transcript=result.text,
+        metadata=TranscriptionMetadata(
+            request_id=request_id_for(request),
+            model=result.model,
+            usage=result.usage,
+            audio_seconds=result.audio_seconds,
+        ),
+    )
