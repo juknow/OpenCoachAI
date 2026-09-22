@@ -125,6 +125,7 @@ HTTP 서비스는 다음을 수행한다.
 4. `FormData`에 파일, 시간, 시도 번호를 넣는다.
 5. `/api/transcriptions`에 POST한다.
 6. 전사문과 로컬 음성 지표를 `TranscriptResult`로 합친다.
+7. request ID, 모델명, usage, provider 오디오 길이를 metadata로 보존한다.
 
 ## 원문과 수정문
 
@@ -140,6 +141,10 @@ editedText 사용자가 확인하고 수정한 문장
 
 현재 단어 수와 WPM은 사용자가 수정한 문장을 기준으로 다시 계산된다. 따라서 화면의
 WPM은 순수한 STT 결과의 단어 수가 아니라 최종 확인 문장의 단어 수를 반영한다.
+
+실제 API 전사에는 `metadata`가 존재하고 Demo 전사에는 없을 수 있다. metadata는
+전사 품질과 비용을 나중에 비교하기 위한 관측 정보이며 음성 또는 전사문을 추가로
+복제하지 않는다.
 
 ## 알려진 한계
 

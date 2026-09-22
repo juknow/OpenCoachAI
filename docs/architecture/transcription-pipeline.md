@@ -45,7 +45,7 @@ TranscriptionService
 OpenAIProvider.transcribe
   │ OpenAI Audio Transcriptions API
   ▼
-전사문 + requestId
+전사문 + 모델·usage metadata
   │
   ▼
 createTranscriptResult
@@ -167,13 +167,19 @@ OpenAI rate limit 오류는 설정에 따라 기본 한 번 재시도한다. SDK
 ```json
 {
   "transcript": "Um, I I went there yesterday.",
-  "requestId": "서버에서 생성한 UUID"
+  "metadata": {
+    "requestId": "서버에서 생성한 UUID",
+    "model": "실제로 호출한 STT 모델",
+    "usage": "token usage 또는 null",
+    "audioSeconds": "provider가 반환한 오디오 길이 또는 null"
+  }
 }
 ```
 
-provider 내부에서는 모델명과 usage를 얻지만 현재 전사 API 응답에는 포함하지 않는다.
-개발 환경에서 명시적으로 usage 로그를 켠 경우에만 요청 종류, 모델, token, latency,
-성공 여부, 재시도 횟수를 안전하게 기록한다. 음성과 전사문은 기록하지 않는다.
+전사 API는 모델명과 provider usage를 metadata로 반환한다. 프론트엔드는 request ID,
+모델명, token, provider 오디오 길이를 `TranscriptResult.metadata`에 보관한다.
+개발 환경에서 명시적으로 usage 로그를 켠 경우에는 요청 종류, 모델, token, latency,
+성공 여부, 재시도 횟수도 안전하게 기록한다. 음성과 전사문은 로그에 기록하지 않는다.
 
 provider는 `response.text`가 문자열인지 검사한다. service는 결과가 빈 문자열 또는
 공백 문자뿐인지 추가로 검사하고, 비어 있으면 HTTP 422 `EMPTY_TRANSCRIPT`를 반환한다.
@@ -194,7 +200,14 @@ interface TranscriptResult {
   repeatedWordCount: number
   metrics: SpeechMetrics
   provider: 'mock' | 'openai'
-  requestId?: string
+  metadata?: {
+    requestId: string
+    model: string
+    audioSeconds?: number
+    inputTokens?: number
+    outputTokens?: number
+    totalTokens?: number
+  }
 }
 ```
 
