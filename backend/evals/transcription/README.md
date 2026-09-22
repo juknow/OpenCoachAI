@@ -26,6 +26,28 @@ transcription/
 .\.venv\Scripts\python.exe -m pytest tests/test_transcription_dataset.py
 ```
 
+## 저장된 실행 결과 평가하기
+
+외부 API를 매번 다시 호출하지 않고, manifest와 저장된 모델 답안을 성적표로 바꿀 수
+있다. 아래 명령은 공개 예시 두 파일을 사용해 `results/example-report.json`을 만든다.
+
+```powershell
+.\.venv\Scripts\python.exe -m app.evals.transcription_cli `
+  --manifest evals/transcription/manifest.example.json `
+  --run evals/transcription/run.example.json `
+  --output evals/transcription/results/example-report.json
+```
+
+`--output`을 생략하면 JSON 성적표를 표준 출력에 표시한다. 성적표에는 다음이 포함된다.
+
+- 전체 micro WER와 단어 오류 수
+- 필러와 연속 반복어의 보존율·정밀도
+- 음성 sample 실패 수
+- 무음·비음성 환각 sample 수
+- 기대와 다른 결과 수
+- latency p50과 p95
+- sample별 상세 점수
+
 ## source 값
 
 | 값 | 의미 |
@@ -52,4 +74,3 @@ transcription/
 - `samples/`, `results/`, `manifest.local.json`은 기본적으로 Git에서 제외된다.
 - 공개 저장소에는 합성 또는 공개 허가를 확실히 증명할 수 있는 작은 fixture만 별도
   검토 후 추가한다.
-
