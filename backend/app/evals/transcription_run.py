@@ -3,7 +3,7 @@ from typing import Literal, Self
 
 from pydantic import Field, model_validator
 
-from app.schemas.common import ApiModel
+from app.schemas.common import ApiModel, UsageMetadata
 
 
 class TranscriptionRunConfig(ApiModel):
@@ -11,6 +11,10 @@ class TranscriptionRunConfig(ApiModel):
     chunking: Literal["none", "auto"] = "none"
     temperature: float | None = Field(default=None, ge=0, le=1)
     include_logprobs: bool = False
+    prompt_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    timeout_seconds: float | None = Field(default=None, ge=5, le=180)
+    max_retries: int | None = Field(default=None, ge=0, le=2)
+    max_audio_bytes: int | None = Field(default=None, ge=1_024, le=25_000_000)
 
 
 class TranscriptionObservation(ApiModel):
@@ -23,6 +27,8 @@ class TranscriptionObservation(ApiModel):
         pattern=r"^[A-Z][A-Z0-9_]*$",
         max_length=100,
     )
+    usage: UsageMetadata | None = None
+    audio_seconds: float | None = Field(default=None, ge=0)
 
     @model_validator(mode="after")
     def validate_status_payload(self) -> Self:

@@ -54,6 +54,59 @@ def test_example_run_matches_result_contract() -> None:
 
     assert run.dataset_version == "stt-eval-v1"
     assert len(run.observations) == 3
+    assert run.config.prompt_sha256 is None
+    assert run.observations[0].usage is None
+
+
+def test_run_accepts_live_execution_metadata_and_serializes_camel_case() -> None:
+    payload = run_payload(
+        observation_payload(
+            usage={"inputTokens": 7, "outputTokens": 4, "totalTokens": 11},
+            audioSeconds=5.8,
+        )
+    )
+    payload["config"] = {
+        "language": "en",
+        "chunking": "none",
+        "promptSha256": "a" * 64,
+        "timeoutSeconds": 60,
+        "maxRetries": 1,
+        "maxAudioBytes": 900_000,
+    }
+
+    run = TranscriptionRun.model_validate(payload)
+    serialized = run.model_dump(by_alias=True)
+
+    assert serialized["config"]["promptSha256"] == "a" * 64
+    assert serialized["config"]["timeoutSeconds"] == 60
+    assert serialized["config"]["maxRetries"] == 1
+    assert serialized["config"]["maxAudioBytes"] == 900_000
+    assert serialized["observations"][0]["usage"]["totalTokens"] == 11
+    assert serialized["observations"][0]["audioSeconds"] == 5.8
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("promptSha256", "not-a-sha256"),
+        ("timeoutSeconds", 0),
+        ("maxRetries", -1),
+        ("maxAudioBytes", 0),
+    ],
+)
+def test_run_rejects_invalid_live_config_metadata(field: str, value: object) -> None:
+    payload = run_payload()
+    payload["config"][field] = value
+
+    with pytest.raises(ValidationError):
+        TranscriptionRun.model_validate(payload)
+
+
+def test_run_rejects_negative_provider_audio_duration() -> None:
+    with pytest.raises(ValidationError):
+        TranscriptionRun.model_validate(
+            run_payload(observation_payload(audioSeconds=-0.1))
+        )
 
 
 def test_run_rejects_duplicate_observation_ids() -> None:
