@@ -1,6 +1,7 @@
 import asyncio
 import json
 from collections.abc import Awaitable, Callable
+from math import isfinite
 from time import perf_counter
 from typing import Any, cast
 
@@ -9,7 +10,12 @@ from pydantic import BaseModel
 
 from app.config import Settings
 from app.errors import ProviderResponseError, openai_error_field, openai_error_parameter
-from app.providers.base import OutputModel, ProviderEvaluation, ProviderTranscription
+from app.providers.base import (
+    OutputModel,
+    ProviderEvaluation,
+    ProviderTranscription,
+    TranscriptionTokenLogprob,
+)
 from app.schemas.common import UsageMetadata
 from app.usage_telemetry import record_usage_event, usage_event
 
@@ -37,18 +43,22 @@ class OpenAIProvider:
         started = perf_counter()
         retry_count = 0
         try:
+            request_arguments: dict[str, object] = {
+                "model": model,
+                "file": (filename, audio, mime_type),
+                "language": "en",
+                "prompt": prompt,
+            }
+            if self._settings.openai_transcription_logprobs_enabled:
+                request_arguments["include"] = ["logprobs"]
             response, retry_count = await self._with_rate_limit_retry(
-                lambda: self._client.audio.transcriptions.create(
-                    model=model,
-                    file=(filename, audio, mime_type),
-                    language="en",
-                    prompt=prompt,
-                )
+                lambda: self._client.audio.transcriptions.create(**request_arguments)
             )
             text = getattr(response, "text", None)
             if not isinstance(text, str):
                 raise ProviderResponseError("INVALID_TRANSCRIPTION_RESPONSE")
             usage, audio_seconds = self._transcription_usage(response)
+            token_logprobs = self._transcription_logprobs(response)
             self._record(
                 request_type="transcription",
                 model=model,
@@ -63,6 +73,7 @@ class OpenAIProvider:
                 model=model,
                 usage=usage,
                 audio_seconds=audio_seconds,
+                token_logprobs=token_logprobs,
             )
         except Exception as error:
             recorded_retries = (
@@ -310,6 +321,27 @@ class OpenAIProvider:
             ),
             None,
         )
+
+    @staticmethod
+    def _transcription_logprobs(response: object) -> tuple[TranscriptionTokenLogprob, ...]:
+        values = getattr(response, "logprobs", None)
+        if not isinstance(values, list):
+            return ()
+
+        result: list[TranscriptionTokenLogprob] = []
+        for value in values:
+            token = getattr(value, "token", None)
+            logprob = getattr(value, "logprob", None)
+            if (
+                not isinstance(token, str)
+                or not token
+                or isinstance(logprob, bool)
+                or not isinstance(logprob, (int, float))
+                or not isfinite(logprob)
+            ):
+                continue
+            result.append(TranscriptionTokenLogprob(token=token, logprob=float(logprob)))
+        return tuple(result)
 
     def _record(
         self,
