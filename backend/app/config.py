@@ -17,6 +17,7 @@ class Settings(BaseSettings):
 
     openai_api_key: SecretStr | None = None
     openai_transcription_model: str = "gpt-4o-mini-transcribe"
+    openai_transcription_logprobs_enabled: bool = True
     openai_evaluation_model: str = "gpt-5.6-luna"
     openai_timeout_seconds: float = Field(default=60, ge=5, le=180)
     openai_evaluation_max_output_tokens: int = Field(default=2_400, ge=1_600, le=8_000)

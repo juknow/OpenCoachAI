@@ -16,6 +16,10 @@ class FakeTranscriptions:
     def __init__(self) -> None:
         self.kwargs = None
         self.duration_seconds = None
+        self.logprobs = [
+            SimpleNamespace(token="Um", logprob=-0.1),
+            SimpleNamespace(token=", I", logprob=-0.7),
+        ]
 
     async def create(self, **kwargs):
         self.kwargs = kwargs
@@ -26,6 +30,7 @@ class FakeTranscriptions:
                     type="duration",
                     seconds=self.duration_seconds,
                 ),
+                logprobs=self.logprobs,
             )
         return SimpleNamespace(
             text="Um, unchanged text.",
@@ -35,6 +40,7 @@ class FakeTranscriptions:
                 output_tokens=4,
                 total_tokens=11,
             ),
+            logprobs=self.logprobs,
         )
 
 
@@ -130,7 +136,12 @@ async def test_openai_provider_uses_bounded_cost_parameters_and_usage() -> None:
     assert transcription.usage is not None
     assert transcription.usage.total_tokens == 11
     assert transcription.audio_seconds is None
+    assert [(item.token, item.logprob) for item in transcription.token_logprobs] == [
+        ("Um", -0.1),
+        (", I", -0.7),
+    ]
     assert client.audio.transcriptions.kwargs["model"] == "gpt-4o-mini-transcribe"
+    assert client.audio.transcriptions.kwargs["include"] == ["logprobs"]
     assert "store" not in client.audio.transcriptions.kwargs
 
     result = await provider.evaluate(
@@ -183,6 +194,51 @@ async def test_transcription_provider_preserves_duration_usage() -> None:
 
     assert transcription.usage is None
     assert transcription.audio_seconds == 12.75
+
+
+@pytest.mark.asyncio
+async def test_transcription_logprobs_can_be_disabled_for_incompatible_models() -> None:
+    settings = Settings(
+        _env_file=None,
+        openai_api_key="not-real",
+        openai_transcription_logprobs_enabled=False,
+    )
+    client = FakeClient()
+    provider = OpenAIProvider(settings, client=client)
+
+    await provider.transcribe(
+        audio=b"audio",
+        filename="answer.webm",
+        mime_type="audio/webm",
+        prompt="preserve",
+    )
+
+    assert "include" not in client.audio.transcriptions.kwargs
+
+
+@pytest.mark.asyncio
+async def test_transcription_provider_ignores_invalid_logprob_items() -> None:
+    settings = Settings(_env_file=None, openai_api_key="not-real")
+    client = FakeClient()
+    client.audio.transcriptions.logprobs = [
+        SimpleNamespace(token=None, logprob=-0.1),
+        SimpleNamespace(token="", logprob=-0.2),
+        SimpleNamespace(token="invalid", logprob=float("nan")),
+        SimpleNamespace(token="invalid", logprob=True),
+        SimpleNamespace(token="valid", logprob=-1.25),
+    ]
+    provider = OpenAIProvider(settings, client=client)
+
+    transcription = await provider.transcribe(
+        audio=b"audio",
+        filename="answer.webm",
+        mime_type="audio/webm",
+        prompt="preserve",
+    )
+
+    assert [(item.token, item.logprob) for item in transcription.token_logprobs] == [
+        ("valid", -1.25)
+    ]
 
 
 @pytest.mark.asyncio

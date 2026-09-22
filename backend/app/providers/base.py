@@ -9,11 +9,18 @@ OutputModel = TypeVar("OutputModel", bound=BaseModel)
 
 
 @dataclass(frozen=True)
+class TranscriptionTokenLogprob:
+    token: str
+    logprob: float
+
+
+@dataclass(frozen=True)
 class ProviderTranscription:
     text: str
     model: str
     usage: UsageMetadata | None = None
     audio_seconds: float | None = None
+    token_logprobs: tuple[TranscriptionTokenLogprob, ...] = ()
 
 
 @dataclass(frozen=True)
