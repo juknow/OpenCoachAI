@@ -1,0 +1,35 @@
+{
+  "version": "stt-eval-v1",
+  "samples": [
+    {
+      "id": "clean-filler-001",
+      "audioPath": "samples/clean-filler-001.webm",
+      "referenceTranscript": "Um, I I usually go there on weekends.",
+      "tags": ["clean", "filler", "repetition"],
+      "durationSeconds": 5.8,
+      "language": "en",
+      "source": "synthetic",
+      "expectedBehavior": "transcribe"
+    },
+    {
+      "id": "silence-001",
+      "audioPath": "samples/silence-001.wav",
+      "referenceTranscript": "",
+      "tags": ["silence"],
+      "durationSeconds": 4.0,
+      "language": "en",
+      "source": "synthetic",
+      "expectedBehavior": "empty-or-rejected"
+    },
+    {
+      "id": "corrupt-webm-001",
+      "audioPath": "samples/corrupt-webm-001.webm",
+      "referenceTranscript": "",
+      "tags": ["corrupt"],
+      "durationSeconds": 0,
+      "language": "en",
+      "source": "synthetic",
+      "expectedBehavior": "rejected"
+    }
+  ]
+}

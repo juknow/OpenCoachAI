@@ -1,7 +1,11 @@
+from pathlib import Path
+
 import pytest
 from pydantic import ValidationError
 
 from app.evals.transcription_dataset import TranscriptionDataset
+
+BACKEND_DIR = Path(__file__).resolve().parents[1]
 
 
 def sample_payload(**overrides: object) -> dict[str, object]:
@@ -29,6 +33,21 @@ def test_dataset_accepts_documented_camel_case_manifest() -> None:
 
     assert dataset.samples[0].audio_path == "samples/clean-filler-001.webm"
     assert dataset.samples[0].reference_transcript.startswith("Um")
+
+
+def test_example_manifest_matches_dataset_contract() -> None:
+    manifest_path = BACKEND_DIR / "evals" / "transcription" / "manifest.example.json"
+
+    dataset = TranscriptionDataset.model_validate_json(
+        manifest_path.read_text(encoding="utf-8")
+    )
+
+    assert len(dataset.samples) == 3
+    assert {sample.expected_behavior for sample in dataset.samples} == {
+        "transcribe",
+        "empty-or-rejected",
+        "rejected",
+    }
 
 
 @pytest.mark.parametrize(
