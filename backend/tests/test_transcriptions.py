@@ -1,3 +1,4 @@
+import pytest
 from fastapi.testclient import TestClient
 
 from tests.conftest import FakeProvider
@@ -50,6 +51,29 @@ def test_transcription_accepts_short_audible_duration(client: TestClient) -> Non
         data={"durationSeconds": "3", "attemptNumber": "1"},
     )
     assert response.status_code == 200
+
+
+@pytest.mark.parametrize("provider_text", ["", "   ", "\n\t"])
+def test_transcription_rejects_empty_provider_text(
+    client: TestClient,
+    fake_provider: FakeProvider,
+    provider_text: str,
+) -> None:
+    fake_provider.transcription_text = provider_text
+
+    response = client.post(
+        "/api/transcriptions",
+        files={"audio": ("answer.webm", WEBM, "audio/webm")},
+        data={"durationSeconds": "12", "attemptNumber": "1"},
+    )
+
+    assert response.status_code == 422
+    payload = response.json()
+    assert payload["error"]["code"] == "EMPTY_TRANSCRIPT"
+    assert payload["error"]["message"] == (
+        "음성이 인식되지 않았습니다. 마이크를 확인하고 다시 녹음해 주세요."
+    )
+    assert payload["error"]["requestId"]
 
 
 def test_transcription_rejects_zero_duration(client: TestClient) -> None:
