@@ -1,8 +1,12 @@
 from pydantic import Field
 
-from app.schemas.common import ApiModel
+from app.schemas.common import ApiModel, ResponseMetadata
+
+
+class TranscriptionMetadata(ResponseMetadata):
+    audio_seconds: float | None = Field(default=None, ge=0)
 
 
 class TranscriptionResponse(ApiModel):
     transcript: str
-    request_id: str = Field(min_length=1)
+    metadata: TranscriptionMetadata

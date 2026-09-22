@@ -13,6 +13,7 @@ class ProviderTranscription:
     text: str
     model: str
     usage: UsageMetadata | None = None
+    audio_seconds: float | None = None
 
 
 @dataclass(frozen=True)

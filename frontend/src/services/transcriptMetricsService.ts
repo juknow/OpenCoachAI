@@ -1,6 +1,7 @@
 import type {
   CoachProvider,
   SpeechMetrics,
+  TranscriptionMetadata,
   TranscriptResult,
 } from '../types/coach.ts'
 import type { ApiSpeechMetrics, ApiWordCount } from '../types/api.ts'
@@ -64,7 +65,7 @@ export const createTranscriptResult = (
   rawText: string,
   metrics: SpeechMetrics,
   provider: CoachProvider,
-  requestId?: string,
+  metadata?: TranscriptionMetadata,
 ): TranscriptResult => {
   const wordCount = countWords(rawText)
   return {
@@ -76,7 +77,7 @@ export const createTranscriptResult = (
     repeatedWordCount: countRepeatedWords(rawText),
     metrics,
     provider,
-    requestId,
+    metadata,
   }
 }
 

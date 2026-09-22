@@ -15,9 +15,18 @@ from tests.helpers import evaluation_output
 class FakeTranscriptions:
     def __init__(self) -> None:
         self.kwargs = None
+        self.duration_seconds = None
 
     async def create(self, **kwargs):
         self.kwargs = kwargs
+        if self.duration_seconds is not None:
+            return SimpleNamespace(
+                text="Um, unchanged text.",
+                usage=SimpleNamespace(
+                    type="duration",
+                    seconds=self.duration_seconds,
+                ),
+            )
         return SimpleNamespace(
             text="Um, unchanged text.",
             usage=SimpleNamespace(
@@ -120,6 +129,7 @@ async def test_openai_provider_uses_bounded_cost_parameters_and_usage() -> None:
     assert transcription.text == "Um, unchanged text."
     assert transcription.usage is not None
     assert transcription.usage.total_tokens == 11
+    assert transcription.audio_seconds is None
     assert client.audio.transcriptions.kwargs["model"] == "gpt-4o-mini-transcribe"
     assert "store" not in client.audio.transcriptions.kwargs
 
@@ -155,6 +165,24 @@ async def test_openai_provider_uses_bounded_cost_parameters_and_usage() -> None:
         "reasoningTokens": 5,
         "totalTokens": 300,
     }
+
+
+@pytest.mark.asyncio
+async def test_transcription_provider_preserves_duration_usage() -> None:
+    settings = Settings(_env_file=None, openai_api_key="not-real")
+    client = FakeClient()
+    client.audio.transcriptions.duration_seconds = 12.75
+    provider = OpenAIProvider(settings, client=client)
+
+    transcription = await provider.transcribe(
+        audio=b"audio",
+        filename="answer.webm",
+        mime_type="audio/webm",
+        prompt="preserve",
+    )
+
+    assert transcription.usage is None
+    assert transcription.audio_seconds == 12.75
 
 
 @pytest.mark.asyncio

@@ -58,7 +58,12 @@ class OpenAIProvider:
                 usage=usage,
                 audio_seconds=audio_seconds,
             )
-            return ProviderTranscription(text=text, model=model, usage=usage)
+            return ProviderTranscription(
+                text=text,
+                model=model,
+                usage=usage,
+                audio_seconds=audio_seconds,
+            )
         except Exception as error:
             recorded_retries = (
                 self._settings.openai_rate_limit_max_retries

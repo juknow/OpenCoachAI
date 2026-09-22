@@ -223,11 +223,22 @@ export const httpCoachService: CoachService = {
       method: 'POST',
       body: formData,
     })
+    const usage = response.metadata.usage
     return createTranscriptResult(
       response.transcript,
       input.metrics,
       'openai',
-      response.requestId,
+      {
+        requestId: response.metadata.requestId,
+        model: response.metadata.model,
+        audioSeconds: response.metadata.audioSeconds ?? undefined,
+        inputTokens: usage?.inputTokens,
+        outputTokens: usage?.outputTokens,
+        cachedInputTokens: usage?.cachedInputTokens,
+        cacheWriteTokens: usage?.cacheWriteTokens,
+        reasoningTokens: usage?.reasoningTokens,
+        totalTokens: usage?.totalTokens,
+      },
     )
   },
 
