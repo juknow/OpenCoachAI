@@ -1,8 +1,10 @@
 import re
 import unicodedata
+from collections import Counter
 from dataclasses import dataclass
 
 WORD_PATTERN = re.compile(r"[a-z0-9]+(?:'[a-z0-9]+)*")
+FILLER_WORDS = frozenset({"um", "uh", "er", "ah", "hmm"})
 
 
 def normalized_words(text: str) -> list[str]:
@@ -28,6 +30,25 @@ class WordErrorBreakdown:
         if self.reference_words == 0 and self.hypothesis_words == 0:
             return 0.0
         return self.errors / max(1, self.reference_words)
+
+
+@dataclass(frozen=True)
+class RetentionBreakdown:
+    reference_items: int
+    hypothesis_items: int
+    matched_items: int
+
+    @property
+    def recall(self) -> float | None:
+        if self.reference_items == 0:
+            return None
+        return self.matched_items / self.reference_items
+
+    @property
+    def precision(self) -> float | None:
+        if self.hypothesis_items == 0:
+            return None
+        return self.matched_items / self.hypothesis_items
 
 
 def word_error_breakdown(reference: str, hypothesis: str) -> WordErrorBreakdown:
@@ -100,3 +121,42 @@ def word_error_breakdown(reference: str, hypothesis: str) -> WordErrorBreakdown:
         insertions=insertions,
     )
 
+
+def filler_retention(reference: str, hypothesis: str) -> RetentionBreakdown:
+    reference_fillers = Counter(
+        token for token in normalized_words(reference) if token in FILLER_WORDS
+    )
+    hypothesis_fillers = Counter(
+        token for token in normalized_words(hypothesis) if token in FILLER_WORDS
+    )
+    return _retention_breakdown(reference_fillers, hypothesis_fillers)
+
+
+def adjacent_repetition_retention(reference: str, hypothesis: str) -> RetentionBreakdown:
+    return _retention_breakdown(
+        _adjacent_repetition_counts(normalized_words(reference)),
+        _adjacent_repetition_counts(normalized_words(hypothesis)),
+    )
+
+
+def _adjacent_repetition_counts(tokens: list[str]) -> Counter[str]:
+    return Counter(
+        token
+        for index, token in enumerate(tokens[1:], start=1)
+        if token == tokens[index - 1]
+    )
+
+
+def _retention_breakdown(
+    reference_counts: Counter[str],
+    hypothesis_counts: Counter[str],
+) -> RetentionBreakdown:
+    matched_items = sum(
+        min(reference_count, hypothesis_counts[item])
+        for item, reference_count in reference_counts.items()
+    )
+    return RetentionBreakdown(
+        reference_items=sum(reference_counts.values()),
+        hypothesis_items=sum(hypothesis_counts.values()),
+        matched_items=matched_items,
+    )
