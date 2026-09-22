@@ -55,12 +55,25 @@ Content-Type: multipart/form-data
 ```json
 {
   "transcript": "Um, I I went there yesterday.",
-  "requestId": "c827d4c1-..."
+  "metadata": {
+    "requestId": "c827d4c1-...",
+    "model": "gpt-4o-mini-transcribe",
+    "usage": {
+      "inputTokens": 120,
+      "outputTokens": 24,
+      "cachedInputTokens": 0,
+      "cacheWriteTokens": 0,
+      "reasoningTokens": 0,
+      "totalTokens": 144
+    },
+    "audioSeconds": null
+  }
 }
 ```
 
-Python 모델은 `request_id`를 사용하고 공통 `ApiModel`의 alias 규칙에 따라 JSON에서는
-`requestId`가 된다.
+Python 모델은 snake_case를 사용하고 공통 `ApiModel`의 alias 규칙에 따라 JSON에서는
+camelCase가 된다. OpenAI가 token usage를 반환하면 `usage`가 채워지고 duration usage를
+반환하면 `audioSeconds`가 채워진다. 제공되지 않은 측정값은 `null`이다.
 
 ## Route 처리
 
@@ -152,8 +165,11 @@ async def transcribe(
 - `text`
 - `model`
 - `usage`
+- `audio_seconds`
 
-하지만 공개 `TranscriptionResponse`에는 `text`와 request ID만 반영한다.
+공개 `TranscriptionResponse`는 이 값과 서버 request ID를 `metadata`로 전달한다.
+프론트엔드는 metadata를 전사 결과에 함께 보관하므로 나중에 모델별 품질과 비용을
+연결할 수 있다.
 
 ## OpenAI 호출 설정
 
@@ -258,11 +274,13 @@ OpenAI SDK의 자동 retry는 0이다. provider의 `_with_rate_limit_retry`가 �
 - 0초 녹음 거부
 - 최대 크기 초과 거부
 - 빈 문자열, 공백, 개행만 포함한 전사 결과 거부
+- request ID, 모델명, token usage, provider 오디오 길이 응답
 
 `tests/test_openai_provider.py`:
 
 - 기본 STT 모델명 전달
 - 전사 usage 파싱
+- token usage와 duration usage를 provider 결과에 구분해 보존
 - SDK에 민감하거나 불필요한 저장 인자를 보내지 않음
 - 평가 provider의 retry와 prompt cache 동작
 - usage 로그에 민감 데이터가 들어가지 않음
