@@ -64,9 +64,16 @@ class TranscriptionService:
             raise ApiProblem("INVALID_AUDIO_FILE", "녹음 파일 형식을 확인해 주세요.", 415)
 
         safe_stem = Path(filename or "recording").stem[:60] or "recording"
-        return await self._provider.transcribe(
+        result = await self._provider.transcribe(
             audio=audio,
             filename=f"{safe_stem}{suffix}",
             mime_type=mime_type,
             prompt=self._prompt,
         )
+        if not result.text.strip():
+            raise ApiProblem(
+                "EMPTY_TRANSCRIPT",
+                "음성이 인식되지 않았습니다. 마이크를 확인하고 다시 녹음해 주세요.",
+                422,
+            )
+        return result
