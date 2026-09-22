@@ -214,6 +214,10 @@ OpenAI SDK의 자동 retry는 0이다. provider의 `_with_rate_limit_retry`가 �
 | 응답 형식 검증 실패 | 502 | `INVALID_AI_RESPONSE` |
 | API 키 미설정 | 503 | `OPENAI_NOT_CONFIGURED` |
 
+전사문이 빈 문자열이거나 공백 문자만 포함하면 service가 HTTP 422
+`EMPTY_TRANSCRIPT`로 변환한다. 사용자는 마이크를 확인하고 다시 녹음할 수 있다.
+내용이 존재한다면 전사문 앞뒤 공백은 임의로 제거하지 않는다.
+
 외부 오류의 원문 message는 API 키나 provider 내부 정보가 섞일 수 있어 사용자에게
 그대로 전달하거나 로그에 남기지 않는다.
 
@@ -253,6 +257,7 @@ OpenAI SDK의 자동 retry는 0이다. provider의 `_with_rate_limit_retry`가 �
 - 3초의 짧은 유효 녹음 허용
 - 0초 녹음 거부
 - 최대 크기 초과 거부
+- 빈 문자열, 공백, 개행만 포함한 전사 결과 거부
 
 `tests/test_openai_provider.py`:
 
@@ -264,7 +269,6 @@ OpenAI SDK의 자동 retry는 0이다. provider의 `_with_rate_limit_retry`가 �
 
 아직 증명하지 않는 것:
 
-- 빈 문자열 응답 거부
 - OpenAI 전사 rate limit 재시도
 - STT timeout과 연결 오류의 route 응답
 - 실제 브라우저가 만든 MP4/M4A/WAV fixture
