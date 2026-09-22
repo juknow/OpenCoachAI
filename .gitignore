@@ -40,6 +40,7 @@ data/temp/*
 # STT evaluation data may contain consented voice recordings or transcripts.
 backend/evals/transcription/samples/*
 backend/evals/transcription/results/*
+backend/evals/transcription/manifest.local.json
 
 # Keep empty folders
 !data/recordings/.gitkeep
