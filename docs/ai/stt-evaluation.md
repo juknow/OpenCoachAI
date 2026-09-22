@@ -258,3 +258,26 @@ WER = (대체한 단어 + 빠뜨린 단어 + 추가한 단어) / 정답 단어 �
 - 모델과 prompt 변경 PR에 이전/이후 비교표가 포함된다.
 - 음성과 전사문이 일반 애플리케이션 로그에 노출되지 않는다.
 - 품질, latency, 비용 중 어느 하나를 숨기고 “개선”이라고 표현하지 않는다.
+
+## 14. 현재 구현 상태
+
+현재 저장소에는 다음 오프라인 평가 기반이 구현되어 있다.
+
+- `backend/app/evals/transcription_dataset.py`: 평가 manifest 계약
+- `backend/app/evals/transcription_run.py`: 모델 실행 결과 계약
+- `backend/app/evals/transcription_metrics.py`: WER, 필러, 연속 반복어 지표
+- `backend/app/evals/transcription_report.py`: 전체 및 sample별 성적표 계산
+- `backend/app/evals/transcription_cli.py`: JSON 성적표 생성 CLI
+- `backend/evals/transcription/`: 공개 예시와 로컬 자료 배치 안내
+
+아직 구현하지 않은 항목:
+
+- 동의받은 실제 비원어민 평가 음성 세트
+- 여러 STT 설정을 실제 호출해 run JSON을 만드는 실험 runner
+- false start와 사람이 표시한 문법·어휘 오류의 보존 지표
+- 실제 API usage를 이용한 오디오 1분당 비용 집계
+- 두 실험 결과를 gate 기준으로 자동 비교하는 명령
+
+현재 CLI는 이미 저장한 모델 실행 결과를 평가하며 외부 API를 호출하거나 비용을
+발생시키지 않는다. 실행 방법은
+`backend/evals/transcription/README.md`에 기록되어 있다.
