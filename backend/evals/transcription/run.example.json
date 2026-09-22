@@ -1,0 +1,36 @@
+{
+  "experimentId": "mini-prompt-v1",
+  "datasetVersion": "stt-eval-v1",
+  "model": "gpt-4o-mini-transcribe-2025-12-15",
+  "promptVersion": "transcription-v1",
+  "createdAt": "2026-09-22T00:00:00Z",
+  "config": {
+    "language": "en",
+    "chunking": "none",
+    "temperature": null,
+    "includeLogprobs": false
+  },
+  "observations": [
+    {
+      "sampleId": "clean-filler-001",
+      "status": "transcribed",
+      "transcript": "Um, I I usually go there on weekends.",
+      "latencyMs": 840,
+      "errorCode": null
+    },
+    {
+      "sampleId": "silence-001",
+      "status": "transcribed",
+      "transcript": "",
+      "latencyMs": 510,
+      "errorCode": null
+    },
+    {
+      "sampleId": "corrupt-webm-001",
+      "status": "rejected",
+      "transcript": "",
+      "latencyMs": 8,
+      "errorCode": "INVALID_AUDIO_FILE"
+    }
+  ]
+}

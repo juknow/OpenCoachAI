@@ -1,9 +1,12 @@
 from datetime import UTC, datetime
+from pathlib import Path
 
 import pytest
 from pydantic import ValidationError
 
 from app.evals.transcription_run import TranscriptionRun
+
+BACKEND_DIR = Path(__file__).resolve().parents[1]
 
 
 def observation_payload(**overrides: object) -> dict[str, object]:
@@ -42,6 +45,15 @@ def test_run_accepts_reproducible_model_prompt_and_config_metadata() -> None:
     assert run.config.language == "en"
     assert run.config.chunking == "none"
     assert run.observations[0].latency_ms == 840
+
+
+def test_example_run_matches_result_contract() -> None:
+    run_path = BACKEND_DIR / "evals" / "transcription" / "run.example.json"
+
+    run = TranscriptionRun.model_validate_json(run_path.read_text(encoding="utf-8"))
+
+    assert run.dataset_version == "stt-eval-v1"
+    assert len(run.observations) == 3
 
 
 def test_run_rejects_duplicate_observation_ids() -> None:
