@@ -268,12 +268,13 @@ WER = (대체한 단어 + 빠뜨린 단어 + 추가한 단어) / 정답 단어 �
 - `backend/app/evals/transcription_metrics.py`: WER, 필러, 연속 반복어 지표
 - `backend/app/evals/transcription_report.py`: 전체 및 sample별 성적표 계산
 - `backend/app/evals/transcription_cli.py`: JSON 성적표 생성 CLI
+- `backend/app/evals/transcription_execute_cli.py`: 동의 평가 음성의 로컬 Whisper 실행 및 run JSON 생성 CLI
 - `backend/evals/transcription/`: 공개 예시와 로컬 자료 배치 안내
 
 아직 구현하지 않은 항목:
 
 - 동의받은 실제 비원어민 평가 음성 세트
-- 여러 STT 설정을 실제 호출해 run JSON을 만드는 실험 runner
+- OpenAI 등 다른 STT 공급자의 실제 실행 adapter와 설정 비교 게이트
 - false start와 사람이 표시한 문법·어휘 오류의 보존 지표
 - 실제 API usage를 이용한 오디오 1분당 비용 집계
 - 두 실험 결과를 gate 기준으로 자동 비교하는 명령
