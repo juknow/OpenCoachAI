@@ -1,4 +1,5 @@
 import asyncio
+from collections.abc import Callable
 from io import BytesIO
 from typing import Any
 
@@ -6,10 +7,10 @@ from app.providers.base import ProviderTranscription
 
 
 class LocalWhisperTranscriptionProvider:
-    """Adapt an already loaded faster-whisper model to the transcription contract."""
+    """Load a faster-whisper model only after the service has validated the audio."""
 
-    def __init__(self, *, model: Any, model_name: str) -> None:
-        self._model = model
+    def __init__(self, *, model_loader: Callable[[], Any], model_name: str) -> None:
+        self._model_loader = model_loader
         self._model_name = model_name
 
     async def transcribe(
@@ -30,8 +31,9 @@ class LocalWhisperTranscriptionProvider:
         )
 
     def _transcribe_sync(self, audio: bytes) -> tuple[str, float]:
+        model = self._model_loader()
         with BytesIO(audio) as audio_stream:
-            segments, info = self._model.transcribe(
+            segments, info = model.transcribe(
                 audio_stream,
                 language="en",
                 task="transcribe",

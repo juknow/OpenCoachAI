@@ -28,7 +28,15 @@ class FakeWhisperModel:
 @pytest.mark.asyncio
 async def test_local_whisper_adapts_audio_without_rewriting_spoken_text() -> None:
     model = FakeWhisperModel()
-    provider = LocalWhisperTranscriptionProvider(model=model, model_name="small.en")
+    loader_calls: list[str] = []
+
+    def load_model() -> FakeWhisperModel:
+        loader_calls.append("loaded")
+        return model
+
+    provider = LocalWhisperTranscriptionProvider(
+        model_loader=load_model, model_name="small.en"
+    )
     request_thread_id = threading.get_ident()
 
     result = await provider.transcribe(
@@ -39,6 +47,7 @@ async def test_local_whisper_adapts_audio_without_rewriting_spoken_text() -> Non
     )
 
     assert model.audio == b"recorded audio"
+    assert loader_calls == ["loaded"]
     assert model.kwargs == {"language": "en", "task": "transcribe", "vad_filter": False}
     assert model.thread_id != request_thread_id
     assert result.text == " Um, I I went there."

@@ -10,7 +10,7 @@ Route 접수원 → Service 검사원 → Provider 외부 연락 담당
 
 - **Route**는 브라우저 요청을 받는다.
 - **Service**는 오디오가 규칙에 맞는지 검사한다.
-- **Provider**는 OpenAI STT를 호출하고 공통 결과로 바꾼다.
+- **Provider**는 선택한 STT 모델을 호출하고 공통 결과로 바꾼다.
 
 이 역할을 나눈 이유는 외부 AI를 바꾸거나 테스트할 때 HTTP 코드와 도메인 규칙을
 모두 다시 작성하지 않기 위해서다.
@@ -151,10 +151,10 @@ audio/webm;codecs=opus → audio/webm
 
 `TranscriptionProvider` Protocol은 전사 서비스가 특정 AI 회사의 SDK에 직접
 의존하지 않게 한다. 평가 서비스는 별도의 `EvaluationProvider` Protocol을 사용한다.
-현재 `get_transcription_provider`는 `OpenAITranscriptionProvider`를,
-`get_evaluation_provider`는 `OpenAIEvaluationProvider`를 반환한다. 두 클래스는
-각자 필요한 메서드만 공개하고 내부 OpenAI SDK 처리 코드를 재사용한다.
-전사와 평가에 다른 회사나 로컬 모델을 선택하는 설정은 아직 구현되지 않았다.
+기본 `get_transcription_provider`는 `OpenAITranscriptionProvider`를 반환한다.
+`TRANSCRIPTION_PROVIDER=local_whisper`를 명시하면 로컬 Whisper adapter를
+반환한다. `get_evaluation_provider`는 계속 `OpenAIEvaluationProvider`를
+반환한다. 따라서 전사 모델만 바꾸고 평가 모델은 그대로 둘 수 있다.
 
 ```python
 async def transcribe(
@@ -179,17 +179,21 @@ async def transcribe(
 
 ### 로컬 Whisper 비교 후보
 
-**현재 구현:** `LocalWhisperTranscriptionProvider`는 이미 로드한
-`faster-whisper` 모델을 위 공통 계약에 연결한다. 오디오 bytes를 메모리에서 전달하고,
-동기식 모델 실행은 별도 thread에서 처리한다. 모델이 돌려준 전사 구간을 순서대로
-합치며 필러나 반복을 코드에서 제거하지 않는다. 모델명은
-`local-whisper/<모델명>`으로 결과에 남긴다.
+**현재 구현:** `LocalWhisperTranscriptionProvider`는 `faster-whisper` 모델을
+공통 전사 계약에 연결한다. `TRANSCRIPTION_PROVIDER=local_whisper`를 설정하면
+`/api/transcriptions`에서 사용할 수 있다. 모델은 파일 크기·형식 검사를 통과한 뒤
+별도 thread에서 처음 로드되고, 같은 서버 프로세스의 다음 요청에 재사용된다.
+오디오 bytes는 메모리에서 전달한다. 모델의 전사 구간을 순서대로 합치며 필러나
+반복을 코드에서 제거하지 않는다. 결과 모델명은 `local-whisper/<모델명>`이다.
+모델 준비 실패는 내부 경로나 예외 내용을 공개하지 않고
+`503 LOCAL_STT_UNAVAILABLE`로 응답한다.
 
-**아직 구현되지 않음:** 로컬 모델 의존성 설치, 모델 파일 다운로드, 서버의 provider
-선택 설정 및 제품 경로 연결. 따라서 현재 `/api/transcriptions`는 계속 OpenAI를
-사용하며 로컬 모델 사용료가 없다는 말은 아직 제품 경로에 적용되지 않는다.
-첫 비교 모델 후보는 영어 전용 `small.en`이다. 큰 모델이나 특정 GPU를 기본으로
-가정하지 않고 CPU 실행부터 검증하려는 선택이며, 품질이 더 좋다는 뜻은 아니다.
+기본값은 여전히 OpenAI이며, 로컬 선택값의 기본 모델 후보는 영어 전용
+`small.en`과 CPU `int8`이다. 모델 파일은 이미지에 포함하지 않는다. 명시적으로
+모델을 미리 다운로드하고 Docker 볼륨에 캐시하는 실행 절차는
+[백엔드 README](../../backend/README.md#docker에서-로컬-whisper-전사-선택)에 있다.
+캐시가 없다면 첫 전사 요청에서 다운로드가 발생할 수 있다. 큰 모델이나 특정 GPU를
+기본으로 가정하지 않는 선택이며, 품질이 더 좋다는 뜻은 아니다.
 같은 평가 음성으로 환각·필러·반복·속도를 확인하기 전에는 기본 모델을 교체하지
 않는다.
 
@@ -199,6 +203,10 @@ prompt를 그대로 넘기지 않는다. 조용하게 말한 구간을 잘라낼
 자료로 반드시 확인해야 한다. 로컬 실행에도 CPU·GPU·메모리 비용이 있다.
 클라우드 provider를 위한 빈 클래스는 추가하지 않는다. 공통
 `TranscriptionProvider` 계약이 향후 실제 클라우드 모델을 연결할 자리다.
+
+**아직 구현되지 않음:** GPU 실행, 모델의 사전 품질 평가, OpenAI 키가 없는
+브라우저에서 로컬 전사와 평가를 함께 사용하는 무료 모드. 현재 브라우저는
+OpenAI 평가 설정이 없으면 Demo Mode로 전환된다.
 
 ## OpenAI 호출 설정
 
@@ -280,6 +288,7 @@ OPIc 답변의 필러·반복을 더 잘 보존하는지 판단할 수 없다. �
 
 | 상황 | HTTP | 공개 코드 |
 |---|---:|---|
+| 로컬 Whisper 모델 준비 실패 | 503 | `LOCAL_STT_UNAVAILABLE` |
 | OpenAI rate limit | 429 | `OPENAI_RATE_LIMITED` |
 | OpenAI quota 부족 | 429 | `OPENAI_QUOTA_EXCEEDED` |
 | OpenAI timeout | 504 | `OPENAI_TIMEOUT` |
@@ -343,6 +352,13 @@ OPIc 답변의 필러·반복을 더 잘 보존하는지 판단할 수 없다. �
 - SDK에 민감하거나 불필요한 저장 인자를 보내지 않음
 - 평가 provider의 retry와 prompt cache 동작
 - usage 로그에 민감 데이터가 들어가지 않음
+
+`tests/test_provider_dependencies.py`, `tests/test_local_whisper_provider.py`:
+
+- 기본 OpenAI 전사 경로 유지와 로컬 provider의 명시적 선택
+- 잘못된 파일에는 로컬 모델을 로드하지 않음
+- 로컬 전사의 모델명·원문·오디오 길이 응답과 모델 재사용
+- 모델 준비 오류의 안전한 `503 LOCAL_STT_UNAVAILABLE` 응답
 
 아직 증명하지 않는 것:
 

@@ -16,6 +16,8 @@ class Settings(BaseSettings):
     )
 
     openai_api_key: SecretStr | None = None
+    transcription_provider: Literal["openai", "local_whisper"] = "openai"
+    local_whisper_model: str = Field(default="small.en", min_length=1)
     openai_transcription_model: str = "gpt-4o-mini-transcribe"
     openai_transcription_logprobs_enabled: bool = True
     openai_evaluation_model: str = "gpt-5.6-luna"

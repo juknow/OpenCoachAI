@@ -1,6 +1,6 @@
 # OPIc Coach API
 
-FastAPI backend for OpenAI transcription and structured OPIc practice evaluation.
+FastAPI backend for OpenAI or local Whisper transcription and OpenAI OPIc evaluation.
 The browser never receives or stores the OpenAI API key.
 
 ## Local setup
@@ -51,10 +51,51 @@ The result cache is process-local. Before running more than one backend instance
 follow [shared-idempotency.md](docs/shared-idempotency.md); do not scale horizontally
 until a shared implementation has passed the same cache and privacy contract tests.
 
-Tests mock the OpenAI provider and do not incur API charges:
+Tests use fake providers and do not incur API charges or download Whisper models:
 
 ```powershell
 python -m pytest
 python -m ruff check .
 python -m compileall app
 ```
+
+## Docker에서 로컬 Whisper 전사 선택
+
+**현재 구현:** 기본 `TRANSCRIPTION_PROVIDER=openai`는 기존 전사 경로를 유지한다.
+`TRANSCRIPTION_PROVIDER=local_whisper`를 명시하면 전사 API만 로컬 Whisper를 사용한다.
+평가 LLM은 여전히 OpenAI다. 로컬 모델은 CPU `int8`로 실행하며 기본 후보는
+`small.en`이다. 이 모델의 OPIc 원문 보존 품질은 아직 평가되지 않았다.
+
+저장소 루트에서 이미지와 재사용할 모델 캐시를 준비한다. 모델 다운로드는 이 명령에서
+명시적으로 한 번 실행하며, 평가 음성이나 API 키는 필요하지 않다.
+
+```powershell
+docker build -t opencoachai-backend:local-whisper -f backend/Dockerfile backend
+docker volume create opencoachai-whisper-cache
+docker run --rm --mount source=opencoachai-whisper-cache,target=/home/appuser/.cache/huggingface --entrypoint python opencoachai-backend:local-whisper -c "from faster_whisper import WhisperModel; WhisperModel('small.en', device='cpu', compute_type='int8'); print('model ready')"
+```
+
+같은 캐시를 연결해 백엔드를 실행한다.
+
+```powershell
+docker run --rm -p 127.0.0.1:8000:8000 --mount source=opencoachai-whisper-cache,target=/home/appuser/.cache/huggingface -e TRANSCRIPTION_PROVIDER=local_whisper -e LOCAL_WHISPER_MODEL=small.en opencoachai-backend:local-whisper
+```
+
+`GET http://127.0.0.1:8000/api/health`는 모델 다운로드 없이 확인할 수 있다.
+실제 `POST /api/transcriptions`는 유효한 음성 파일을 제출할 때 모델을 메모리에
+한 번 로드한다. 파일 검사에 실패하면 모델을 로드하지 않는다. 캐시를 연결하지 않으면
+새 컨테이너에서 모델을 다시 내려받을 수 있다. 큰 모델은 `LOCAL_WHISPER_MODEL`을
+바꾸어 시험할 수 있지만 CPU 속도와 품질을 따로 측정해야 한다.
+
+직접 전사를 확인할 때는 본인이 녹음했거나 평가 사용에 동의받은 900KB 이하 음성을
+사용한다. 아래 `sample.webm`과 초 단위 길이는 실제 파일에 맞게 바꾼다.
+
+```powershell
+curl.exe -X POST http://127.0.0.1:8000/api/transcriptions -F "audio=@sample.webm;type=audio/webm" -F "durationSeconds=5" -F "attemptNumber=1"
+```
+
+성공 응답의 `metadata.model`이 `local-whisper/small.en`인지 확인한다.
+
+OpenAI API 키가 없어도 이 전사 API는 직접 호출할 수 있다. 다만 현재 브라우저는
+평가 LLM 연결을 확인하기 위해 OpenAI 설정 여부를 사용하므로, 키가 없으면
+Demo Mode로 전환된다. 브라우저 전체를 무료 모드로 전환하는 작업은 포함되지 않는다.
