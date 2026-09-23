@@ -46,10 +46,17 @@ class _OpenAIProviderCore:
             request_arguments: dict[str, object] = {
                 "model": model,
                 "file": (filename, audio, mime_type),
-                "language": "en",
                 "prompt": prompt,
             }
-            if self._settings.openai_transcription_logprobs_enabled:
+            if model == "gpt-transcribe":
+                request_arguments["extra_body"] = {"languages": ["en"]}
+            else:
+                request_arguments["language"] = "en"
+            if self._settings.openai_transcription_logprobs_enabled and model in {
+                "gpt-4o-transcribe",
+                "gpt-4o-mini-transcribe",
+                "gpt-4o-mini-transcribe-2025-12-15",
+            }:
                 request_arguments["include"] = ["logprobs"]
             response, retry_count = await self._with_rate_limit_retry(
                 lambda: self._client.audio.transcriptions.create(**request_arguments)

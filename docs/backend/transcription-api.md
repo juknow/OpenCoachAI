@@ -191,6 +191,36 @@ OpenAI SDK의 자동 retry는 0이다. provider의 `_with_rate_limit_retry`가 �
 
 호출 시 언어를 `en`으로 고정한다. 현재 OPIc 답변이 영어라는 제품 전제 때문이다.
 
+### 모델별 전사 요청 형식
+
+**현재 구현:** `OPENAI_TRANSCRIPTION_MODEL`은 전사 모델만 선택한다. 평가 LLM은
+`OPENAI_EVALUATION_MODEL`로 따로 선택한다. 전사 모델을 바꿀 때 필요한 요청 인자도
+provider가 구분한다.
+
+| 전사 모델 | 영어 힌트 | `logprobs` 요청 |
+|---|---|---|
+| `gpt-transcribe` | `extra_body={"languages": ["en"]}` | 보내지 않음 |
+| `gpt-4o-transcribe`, `gpt-4o-mini-transcribe`, `gpt-4o-mini-transcribe-2025-12-15` | `language="en"` | 설정이 켜졌을 때만 보냄 |
+| `whisper-1` | `language="en"` | 보내지 않음 |
+
+`prompt`와 오디오 파일은 위 모델에 공통으로 전달한다. `logprobs` 설정이 켜져 있어도
+지원하지 않는 모델에는 이 필드를 보내지 않는다. `gpt-4o-transcribe-diarize`는
+`prompt`를 지원하지 않아 이 단일 화자·원문 보존 흐름의 모델 교체 대상으로 삼지 않는다.
+새 전사 모델을 사용할 때는 지원하는 요청 인자를 공식 문서로 확인하고 가짜 provider
+테스트를 먼저 추가해야 한다.
+
+**기본 모델 선택 대기:** 공식 예상 비용은 녹음 1분당 `gpt-4o-mini-transcribe`가
+$0.003, `gpt-transcribe`가 $0.0045다. 현재 비용 우선 기준에서는 전자가 더 저렴하지만
+2027년 2월 26일 종료 예정이다. 녹음 완료 후 전사의 공식 권장 모델은
+`gpt-transcribe`다. 지금은 고정 평가 음성의 품질 비교 자료가 없어 어느 모델이
+OPIc 답변의 필러·반복을 더 잘 보존하는지 판단할 수 없다. 따라서 기본값은 아직
+바꾸지 않았으며, 같은 음성으로 두 모델을 평가한 결과와 실제 비용을 검토한 뒤
+사용자 승인으로 결정한다. 자세한 지원 형식과 비용은
+[전사 가이드](https://developers.openai.com/api/docs/guides/speech-to-text),
+[전사 API](https://developers.openai.com/api/reference/cli/resources/audio/subresources/transcriptions/methods/create),
+[가격표](https://developers.openai.com/api/docs/pricing),
+[종료 일정](https://developers.openai.com/api/docs/deprecations)을 참고한다.
+
 ## Prompt의 책임
 
 `app/prompts/transcription.txt`는 STT가 코치처럼 행동하지 못하게 한다. 전사 단계는

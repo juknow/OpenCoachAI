@@ -220,6 +220,47 @@ async def test_transcription_logprobs_can_be_disabled_for_incompatible_models() 
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("model", "language_field", "includes_logprobs"),
+    [
+        ("gpt-transcribe", "languages", False),
+        ("gpt-4o-transcribe", "language", True),
+        ("gpt-4o-mini-transcribe-2025-12-15", "language", True),
+        ("whisper-1", "language", False),
+    ],
+)
+async def test_transcription_request_matches_model_capabilities(
+    model: str, language_field: str, includes_logprobs: bool
+) -> None:
+    settings = Settings(
+        _env_file=None,
+        openai_api_key="not-real",
+        openai_transcription_model=model,
+    )
+    client = FakeClient()
+    provider = OpenAITranscriptionProvider(settings, client=client)
+
+    await provider.transcribe(
+        audio=b"audio",
+        filename="answer.webm",
+        mime_type="audio/webm",
+        prompt="preserve",
+    )
+
+    kwargs = client.audio.transcriptions.kwargs
+    assert kwargs["model"] == model
+    assert kwargs["prompt"] == "preserve"
+    assert kwargs["file"] == ("answer.webm", b"audio", "audio/webm")
+    if language_field == "languages":
+        assert kwargs["extra_body"] == {"languages": ["en"]}
+        assert "language" not in kwargs
+    else:
+        assert kwargs["language"] == "en"
+        assert "extra_body" not in kwargs
+    assert (kwargs.get("include") == ["logprobs"]) is includes_logprobs
+
+
+@pytest.mark.asyncio
 async def test_transcription_provider_ignores_invalid_logprob_items() -> None:
     settings = Settings(_env_file=None, openai_api_key="not-real")
     client = FakeClient()
