@@ -1,0 +1,12 @@
+# Send only the backend application and its runtime dependencies to Docker.
+*
+!app/
+!app/**
+!requirements.txt
+
+# Keep secrets and generated files out even if they appear under app/ later.
+**/.env
+**/.env.*
+**/__pycache__/
+**/*.pyc
+**/*.pyo
