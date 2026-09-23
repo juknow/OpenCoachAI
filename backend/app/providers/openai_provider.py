@@ -20,7 +20,7 @@ from app.schemas.common import UsageMetadata
 from app.usage_telemetry import record_usage_event, usage_event
 
 
-class OpenAIProvider:
+class _OpenAIProviderCore:
     def __init__(self, settings: Settings, client: Any | None = None) -> None:
         if not settings.openai_configured:
             raise ProviderResponseError("OPENAI_NOT_CONFIGURED")
@@ -367,4 +367,48 @@ class OpenAIProvider:
                 error_type=error_type,
             ),
             enabled=self._settings.detailed_usage_logging_enabled,
+        )
+
+
+class OpenAITranscriptionProvider:
+    def __init__(self, settings: Settings, client: Any | None = None) -> None:
+        self._core = _OpenAIProviderCore(settings, client)
+
+    async def transcribe(
+        self,
+        *,
+        audio: bytes,
+        filename: str,
+        mime_type: str,
+        prompt: str,
+    ) -> ProviderTranscription:
+        return await self._core.transcribe(
+            audio=audio,
+            filename=filename,
+            mime_type=mime_type,
+            prompt=prompt,
+        )
+
+
+class OpenAIEvaluationProvider:
+    def __init__(self, settings: Settings, client: Any | None = None) -> None:
+        self._core = _OpenAIProviderCore(settings, client)
+
+    async def evaluate(
+        self,
+        *,
+        system_prompt: str,
+        user_payload: dict[str, object],
+        response_model: type[OutputModel],
+        request_type: str = "evaluation",
+        max_output_tokens: int | None = None,
+        prompt_cache_key: str | None = None,
+    ) -> ProviderEvaluation:
+        return await self._core.evaluate(
+            system_prompt=system_prompt,
+            user_payload=user_payload,
+            response_model=response_model,
+            request_type=request_type,
+            max_output_tokens=max_output_tokens,
+            prompt_cache_key=prompt_cache_key,
         )

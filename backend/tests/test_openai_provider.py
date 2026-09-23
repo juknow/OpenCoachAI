@@ -7,7 +7,7 @@ from openai import BadRequestError, RateLimitError
 
 from app.config import Settings
 from app.errors import ProviderResponseError
-from app.providers.openai_provider import OpenAIProvider
+from app.providers.openai_provider import OpenAIEvaluationProvider, OpenAITranscriptionProvider
 from app.schemas.evaluation import CompactEvaluationOutput
 from tests.helpers import evaluation_output
 
@@ -117,16 +117,19 @@ class FakeClient:
 
 
 @pytest.mark.asyncio
-async def test_openai_provider_uses_bounded_cost_parameters_and_usage() -> None:
+async def test_openai_role_providers_use_bounded_cost_parameters_and_usage() -> None:
     settings = Settings(
         _env_file=None,
         openai_api_key="not-real",
         openai_prompt_cache_enabled=True,
     )
     client = FakeClient()
-    provider = OpenAIProvider(settings, client=client)
+    transcription_provider = OpenAITranscriptionProvider(settings, client=client)
+    evaluation_provider = OpenAIEvaluationProvider(settings, client=client)
+    assert not hasattr(transcription_provider, "evaluate")
+    assert not hasattr(evaluation_provider, "transcribe")
 
-    transcription = await provider.transcribe(
+    transcription = await transcription_provider.transcribe(
         audio=b"audio",
         filename="answer.webm",
         mime_type="audio/webm",
@@ -144,7 +147,7 @@ async def test_openai_provider_uses_bounded_cost_parameters_and_usage() -> None:
     assert client.audio.transcriptions.kwargs["include"] == ["logprobs"]
     assert "store" not in client.audio.transcriptions.kwargs
 
-    result = await provider.evaluate(
+    result = await evaluation_provider.evaluate(
         system_prompt="evaluate",
         user_payload={"transcript": "Um"},
         response_model=CompactEvaluationOutput,
@@ -183,7 +186,7 @@ async def test_transcription_provider_preserves_duration_usage() -> None:
     settings = Settings(_env_file=None, openai_api_key="not-real")
     client = FakeClient()
     client.audio.transcriptions.duration_seconds = 12.75
-    provider = OpenAIProvider(settings, client=client)
+    provider = OpenAITranscriptionProvider(settings, client=client)
 
     transcription = await provider.transcribe(
         audio=b"audio",
@@ -204,7 +207,7 @@ async def test_transcription_logprobs_can_be_disabled_for_incompatible_models() 
         openai_transcription_logprobs_enabled=False,
     )
     client = FakeClient()
-    provider = OpenAIProvider(settings, client=client)
+    provider = OpenAITranscriptionProvider(settings, client=client)
 
     await provider.transcribe(
         audio=b"audio",
@@ -227,7 +230,7 @@ async def test_transcription_provider_ignores_invalid_logprob_items() -> None:
         SimpleNamespace(token="invalid", logprob=True),
         SimpleNamespace(token="valid", logprob=-1.25),
     ]
-    provider = OpenAIProvider(settings, client=client)
+    provider = OpenAITranscriptionProvider(settings, client=client)
 
     transcription = await provider.transcribe(
         audio=b"audio",
@@ -246,7 +249,7 @@ async def test_prompt_cache_is_disabled_by_default_without_changing_payload_orde
     settings = Settings(_env_file=None, openai_api_key="not-real")
     assert settings.openai_prompt_cache_enabled is False
     client = FakeClient()
-    provider = OpenAIProvider(settings, client=client)
+    provider = OpenAIEvaluationProvider(settings, client=client)
 
     await provider.evaluate(
         system_prompt="stable prefix",
@@ -270,7 +273,7 @@ async def test_prompt_cache_compatibility_error_retries_once_without_cache() -> 
     )
     client = FakeClient()
     client.responses.prompt_cache_error_once = True
-    provider = OpenAIProvider(settings, client=client)
+    provider = OpenAIEvaluationProvider(settings, client=client)
 
     result = await provider.evaluate(
         system_prompt="stable prefix",
@@ -291,7 +294,7 @@ async def test_unrelated_bad_request_is_not_retried_without_cache() -> None:
     settings = Settings(_env_file=None, openai_api_key="not-real")
     client = FakeClient()
     client.responses.unrelated_bad_request = True
-    provider = OpenAIProvider(settings, client=client)
+    provider = OpenAIEvaluationProvider(settings, client=client)
 
     with pytest.raises(BadRequestError):
         await provider.evaluate(
@@ -313,7 +316,7 @@ async def test_rate_limit_is_retried_once_by_controlled_provider_policy() -> Non
     )
     client = FakeClient()
     client.responses.rate_limit_once = True
-    provider = OpenAIProvider(settings, client=client)
+    provider = OpenAIEvaluationProvider(settings, client=client)
 
     await provider.evaluate(
         system_prompt="evaluate",
@@ -329,7 +332,7 @@ async def test_truncated_structured_output_is_rejected_without_retry() -> None:
     settings = Settings(_env_file=None, openai_api_key="not-real")
     client = FakeClient()
     client.responses.incomplete = True
-    provider = OpenAIProvider(settings, client=client)
+    provider = OpenAIEvaluationProvider(settings, client=client)
 
     with pytest.raises(ProviderResponseError, match="EVALUATION_OUTPUT_TRUNCATED"):
         await provider.evaluate(
@@ -352,7 +355,7 @@ async def test_usage_log_never_contains_sensitive_payloads(
         openai_usage_log_enabled=True,
     )
     client = FakeClient()
-    provider = OpenAIProvider(settings, client=client)
+    provider = OpenAIEvaluationProvider(settings, client=client)
     secret_transcript = "private transcript content"
 
     with caplog.at_level(logging.INFO, logger="opic.usage"):

@@ -150,9 +150,10 @@ audio/webm;codecs=opus → audio/webm
 
 `TranscriptionProvider` Protocol은 전사 서비스가 특정 AI 회사의 SDK에 직접
 의존하지 않게 한다. 평가 서비스는 별도의 `EvaluationProvider` Protocol을 사용한다.
-현재 `OpenAIProvider`는 두 계약을 모두 충족한다. API 경로는 각각
-`get_transcription_provider`, `get_evaluation_provider` 함수를 사용하지만 두 함수는
-아직 같은 OpenAI 구현을 반환한다. 전사와 평가의 다른 공급자 선택은 아직 구현되지 않았다.
+현재 `get_transcription_provider`는 `OpenAITranscriptionProvider`를,
+`get_evaluation_provider`는 `OpenAIEvaluationProvider`를 반환한다. 두 클래스는
+각자 필요한 메서드만 공개하고 내부 OpenAI SDK 처리 코드를 재사용한다.
+전사와 평가에 다른 회사나 로컬 모델을 선택하는 설정은 아직 구현되지 않았다.
 
 ```python
 async def transcribe(

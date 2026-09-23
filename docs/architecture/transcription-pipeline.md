@@ -42,7 +42,7 @@ FastAPI transcription route
 TranscriptionService
   │ 시간·크기·MIME·signature 검증
   ▼
-OpenAIProvider.transcribe
+OpenAITranscriptionProvider.transcribe
   │ OpenAI Audio Transcriptions API
   ▼
 전사문 + 모델·usage metadata

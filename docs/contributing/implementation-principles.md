@@ -37,7 +37,9 @@
 **현재 구현:** `TranscriptionService`가 파일 형식·크기를 검사하고
 `TranscriptionProvider`로 전사한다. 평가에는 별도 `EvaluationProvider` 계약을
 사용한다. API 경로는 각각 `get_transcription_provider`,
-`get_evaluation_provider`로 연결되지만 두 함수 모두 현재 `OpenAIProvider`를 반환한다.
+`get_evaluation_provider`로 연결된다. 현재는 전사용
+`OpenAITranscriptionProvider`와 평가용 `OpenAIEvaluationProvider`가 연결되며,
+두 구현은 기존 OpenAI SDK 처리 코드를 내부에서 재사용한다.
 평가 manifest, run JSON 계약, 점수 계산기와 저장된 결과를 채점하는 CLI도 이미 있다.
 
 **다음 작업의 선택:** 평가 음성을 실행할 때 이 부품을 다시 사용하고, manifest의
@@ -51,5 +53,5 @@
 대체하지 못하므로 이번 연결 작업에 도입하지 않는다. 평가 규모와 실험 관리 요구가
 커지면 다시 비교한다.
 
-**아직 구현되지 않음:** manifest 음성을 실제로 실행해 run JSON을 생성하는 명령과
-기준 설정·후보 설정의 자동 비교 게이트.
+**아직 구현되지 않음:** 전사·평가의 다른 회사 또는 로컬 모델 선택, manifest
+음성을 실제로 실행해 run JSON을 생성하는 명령, 기준 설정·후보 설정의 자동 비교 게이트.
