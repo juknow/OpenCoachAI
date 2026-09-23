@@ -30,7 +30,7 @@ class ProviderEvaluation:
     usage: UsageMetadata | None
 
 
-class AiProvider(Protocol):
+class TranscriptionProvider(Protocol):
     async def transcribe(
         self,
         *,
@@ -40,6 +40,8 @@ class AiProvider(Protocol):
         prompt: str,
     ) -> ProviderTranscription: ...
 
+
+class EvaluationProvider(Protocol):
     async def evaluate(
         self,
         *,

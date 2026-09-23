@@ -148,7 +148,11 @@ audio/webm;codecs=opus → audio/webm
 
 ## Provider 경계
 
-`AiProvider` Protocol은 service가 특정 AI 회사의 SDK에 직접 의존하지 않게 한다.
+`TranscriptionProvider` Protocol은 전사 서비스가 특정 AI 회사의 SDK에 직접
+의존하지 않게 한다. 평가 서비스는 별도의 `EvaluationProvider` Protocol을 사용한다.
+현재 `OpenAIProvider`는 두 계약을 모두 충족하며, API 경로는 아직 공통
+`get_ai_provider` 함수로 같은 구현을 받는다. 따라서 계약 분리는 완료됐지만
+전사와 평가의 공급자를 독립적으로 선택하는 연결은 아직 구현되지 않았다.
 
 ```python
 async def transcribe(

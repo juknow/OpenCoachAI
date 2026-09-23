@@ -26,7 +26,7 @@
 - 하나의 모듈에는 한 가지 책임을 둔다. 예를 들어 평가 음성 실행과 점수 계산은
   별개이며, 기존 점수 계산기를 다시 사용한다.
 - 외부 서비스는 교체하거나 테스트할 수 있는 기존 인터페이스를 통해 호출한다.
-  현재 전사 코드의 `AiProvider`가 그 경계다.
+  현재 전사는 `TranscriptionProvider`, 평가는 `EvaluationProvider`가 그 경계다.
 - 새 라이브러리를 도입해도 제품의 파일 검사와 오류 규칙을 우회하지 않는다.
 - SOLID와 디자인 패턴은 문제를 해결하는 도구다. 구현이 하나뿐인데 인터페이스를
   여러 겹 만드는 식의 형식적인 추상화는 피한다.
@@ -34,9 +34,11 @@
 
 ## 현재 STT 실험 도구에 적용
 
-**현재 구현:** `TranscriptionService`가 파일 형식·크기를 검사하고 `AiProvider`로
-전사한다. 평가 manifest, run JSON 계약, 점수 계산기와 저장된 결과를 채점하는 CLI도
-이미 있다.
+**현재 구현:** `TranscriptionService`가 파일 형식·크기를 검사하고
+`TranscriptionProvider`로 전사한다. 평가에는 별도 `EvaluationProvider` 계약을
+사용한다. 두 API 경로의 공급 함수는 아직 공통 `get_ai_provider`이며
+`OpenAIProvider`가 두 계약을 모두 구현한다. 평가 manifest, run JSON 계약,
+점수 계산기와 저장된 결과를 채점하는 CLI도 이미 있다.
 
 **다음 작업의 선택:** 평가 음성을 실행할 때 이 부품을 다시 사용하고, manifest의
 각 파일을 기존 서비스에 전달해 run JSON 관측값으로 바꾸는 연결 부분만 만든다.

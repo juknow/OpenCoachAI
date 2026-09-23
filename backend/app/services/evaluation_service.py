@@ -6,7 +6,7 @@ from app.config import Settings
 from app.errors import ProviderResponseError
 from app.evaluation_cache import ResultCache
 from app.evaluation_defaults import SAFETY_NOTICE, estimated_range_for, reusable_structure_for
-from app.providers.base import AiProvider
+from app.providers.base import EvaluationProvider
 from app.schemas.common import ResponseMetadata
 from app.schemas.evaluation import (
     CompactDimension,
@@ -138,7 +138,7 @@ def compact_to_public(
 class EvaluationService:
     def __init__(
         self,
-        provider: AiProvider,
+        provider: EvaluationProvider,
         prompt: str,
         settings: Settings,
         cache: ResultCache[EvaluationResponse],
