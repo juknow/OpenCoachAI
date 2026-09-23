@@ -3,6 +3,7 @@
 !app/
 !app/**
 !requirements.txt
+!requirements-whisper.txt
 
 # Keep secrets and generated files out even if they appear under app/ later.
 **/.env
