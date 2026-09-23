@@ -14,5 +14,9 @@ def read_prompt(filename: str) -> str:
     return (PROMPT_DIR / filename).read_text(encoding="utf-8").strip()
 
 
-def get_ai_provider(settings: Settings = Depends(get_settings)) -> OpenAIProvider:
+def get_transcription_provider(settings: Settings = Depends(get_settings)) -> OpenAIProvider:
+    return OpenAIProvider(settings)
+
+
+def get_evaluation_provider(settings: Settings = Depends(get_settings)) -> OpenAIProvider:
     return OpenAIProvider(settings)

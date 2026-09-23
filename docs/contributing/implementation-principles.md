@@ -36,9 +36,9 @@
 
 **현재 구현:** `TranscriptionService`가 파일 형식·크기를 검사하고
 `TranscriptionProvider`로 전사한다. 평가에는 별도 `EvaluationProvider` 계약을
-사용한다. 두 API 경로의 공급 함수는 아직 공통 `get_ai_provider`이며
-`OpenAIProvider`가 두 계약을 모두 구현한다. 평가 manifest, run JSON 계약,
-점수 계산기와 저장된 결과를 채점하는 CLI도 이미 있다.
+사용한다. API 경로는 각각 `get_transcription_provider`,
+`get_evaluation_provider`로 연결되지만 두 함수 모두 현재 `OpenAIProvider`를 반환한다.
+평가 manifest, run JSON 계약, 점수 계산기와 저장된 결과를 채점하는 CLI도 이미 있다.
 
 **다음 작업의 선택:** 평가 음성을 실행할 때 이 부품을 다시 사용하고, manifest의
 각 파일을 기존 서비스에 전달해 run JSON 관측값으로 바꾸는 연결 부분만 만든다.

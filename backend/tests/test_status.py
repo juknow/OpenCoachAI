@@ -2,7 +2,7 @@ import httpx
 from fastapi.testclient import TestClient
 from openai import BadRequestError, PermissionDeniedError, RateLimitError
 
-from app.api.dependencies import get_ai_provider
+from app.api.dependencies import get_evaluation_provider
 from app.config import Settings, get_settings
 from app.errors import ProviderResponseError
 from app.main import create_app
@@ -49,7 +49,7 @@ def test_provider_error_does_not_expose_internal_message() -> None:
             raise ProviderResponseError("upstream detail sk-never-return-this")
 
     app = create_app()
-    app.dependency_overrides[get_ai_provider] = lambda: FailingProvider()
+    app.dependency_overrides[get_evaluation_provider] = lambda: FailingProvider()
     app.dependency_overrides[get_settings] = lambda: Settings(
         _env_file=None,
         openai_api_key="test-key-not-a-real-secret",
@@ -72,7 +72,7 @@ def _client_with_status_error(error: Exception) -> TestClient:
             raise error
 
     app = create_app()
-    app.dependency_overrides[get_ai_provider] = lambda: FailingProvider()
+    app.dependency_overrides[get_evaluation_provider] = lambda: FailingProvider()
     app.dependency_overrides[get_settings] = lambda: Settings(
         _env_file=None,
         openai_api_key="test-key-not-a-real-secret",

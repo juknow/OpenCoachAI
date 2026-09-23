@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 import pytest
 from fastapi.testclient import TestClient
 
-from app.api.dependencies import get_ai_provider
+from app.api.dependencies import get_evaluation_provider, get_transcription_provider
 from app.config import Settings, get_settings
 from app.main import create_app
 from app.providers.base import ProviderEvaluation, ProviderTranscription
@@ -75,7 +75,8 @@ def configured_settings() -> Settings:
 @pytest.fixture
 def client(fake_provider: FakeProvider, configured_settings: Settings) -> AsyncIterator[TestClient]:
     app = create_app()
-    app.dependency_overrides[get_ai_provider] = lambda: fake_provider
+    app.dependency_overrides[get_transcription_provider] = lambda: fake_provider
+    app.dependency_overrides[get_evaluation_provider] = lambda: fake_provider
     app.dependency_overrides[get_settings] = lambda: configured_settings
     with TestClient(app, raise_server_exceptions=False) as test_client:
         yield test_client

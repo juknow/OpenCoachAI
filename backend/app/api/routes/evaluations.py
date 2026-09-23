@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, Request
 
-from app.api.dependencies import get_ai_provider, read_prompt
+from app.api.dependencies import get_evaluation_provider, read_prompt
 from app.config import Settings, get_settings
 from app.errors import request_id_for
 from app.providers.base import EvaluationProvider
@@ -22,7 +22,7 @@ async def create_evaluation(
     payload: EvaluationRequest,
     request: Request,
     settings: Settings = Depends(get_settings),
-    provider: EvaluationProvider = Depends(get_ai_provider),
+    provider: EvaluationProvider = Depends(get_evaluation_provider),
 ) -> EvaluationResponse:
     prompt_filename = (
         "evaluation_v1.txt" if settings.evaluation_prompt_version == "v1" else "evaluation.txt"
@@ -41,7 +41,7 @@ async def create_evaluation_v2(
     payload: EvaluationRequest,
     request: Request,
     settings: Settings = Depends(get_settings),
-    provider: EvaluationProvider = Depends(get_ai_provider),
+    provider: EvaluationProvider = Depends(get_evaluation_provider),
 ) -> EvaluationV2Response:
     service = EvaluationV2Service(
         provider,
@@ -57,7 +57,7 @@ async def create_higher_answer(
     payload: HigherAnswerRequest,
     request: Request,
     settings: Settings = Depends(get_settings),
-    provider: EvaluationProvider = Depends(get_ai_provider),
+    provider: EvaluationProvider = Depends(get_evaluation_provider),
 ) -> HigherAnswerResponse:
     service = HigherAnswerService(
         provider,
