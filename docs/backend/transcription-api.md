@@ -23,6 +23,7 @@ Route 접수원 → Service 검사원 → Provider 외부 연락 담당
 | `app/services/transcription_service.py` | 시간, 크기, 형식, signature 검증 |
 | `app/providers/base.py` | provider가 지켜야 할 Protocol과 공통 결과 |
 | `app/providers/openai_provider.py` | OpenAI SDK 호출, retry, usage 기록 |
+| `app/providers/local_whisper_provider.py` | 로컬 Whisper 모델을 공통 전사 결과에 연결하는 비교용 adapter |
 | `app/schemas/transcription.py` | 공개 응답 Pydantic 모델 |
 | `app/prompts/transcription.txt` | 축약·교정을 금지하는 STT prompt |
 | `app/errors.py` | 내부 및 OpenAI 오류를 안전한 HTTP 오류로 변환 |
@@ -175,6 +176,29 @@ async def transcribe(
 공개 `TranscriptionResponse`는 이 값과 서버 request ID를 `metadata`로 전달한다.
 프론트엔드는 metadata를 전사 결과에 함께 보관하므로 나중에 모델별 품질과 비용을
 연결할 수 있다.
+
+### 로컬 Whisper 비교 후보
+
+**현재 구현:** `LocalWhisperTranscriptionProvider`는 이미 로드한
+`faster-whisper` 모델을 위 공통 계약에 연결한다. 오디오 bytes를 메모리에서 전달하고,
+동기식 모델 실행은 별도 thread에서 처리한다. 모델이 돌려준 전사 구간을 순서대로
+합치며 필러나 반복을 코드에서 제거하지 않는다. 모델명은
+`local-whisper/<모델명>`으로 결과에 남긴다.
+
+**아직 구현되지 않음:** 로컬 모델 의존성 설치, 모델 파일 다운로드, 서버의 provider
+선택 설정 및 제품 경로 연결. 따라서 현재 `/api/transcriptions`는 계속 OpenAI를
+사용하며 로컬 모델 사용료가 없다는 말은 아직 제품 경로에 적용되지 않는다.
+첫 비교 모델 후보는 영어 전용 `small.en`이다. 큰 모델이나 특정 GPU를 기본으로
+가정하지 않고 CPU 실행부터 검증하려는 선택이며, 품질이 더 좋다는 뜻은 아니다.
+같은 평가 음성으로 환각·필러·반복·속도를 확인하기 전에는 기본 모델을 교체하지
+않는다.
+
+Whisper의 `initial_prompt`는 명령문 전달 기능과 같지 않으므로 기존 OPIc 전사
+prompt를 그대로 넘기지 않는다. 조용하게 말한 구간을 잘라낼 위험을 줄이기 위해
+이 후보에서는 VAD를 끈다. 대신 무음에서 없는 말을 만들어낼 가능성은 고정 평가
+자료로 반드시 확인해야 한다. 로컬 실행에도 CPU·GPU·메모리 비용이 있다.
+클라우드 provider를 위한 빈 클래스는 추가하지 않는다. 공통
+`TranscriptionProvider` 계약이 향후 실제 클라우드 모델을 연결할 자리다.
 
 ## OpenAI 호출 설정
 
