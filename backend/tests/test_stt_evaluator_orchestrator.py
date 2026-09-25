@@ -1,4 +1,5 @@
 import asyncio
+import hashlib
 import json
 from dataclasses import dataclass
 from pathlib import Path
@@ -113,7 +114,14 @@ async def test_selected_evaluators_run_in_parallel_and_store_native_outputs(tmp_
         assert json.loads(result_path.read_text())["native"] == execution.evaluator_id
         assert execution.raw_result_sha256
     stored_index = json.loads((store.run_directory / "index.json").read_text())
+    assert stored_index["schemaVersion"] == "stt-evaluator-index-v2"
     assert stored_index["enabledEvaluators"] == ["first", "second"]
+    assert stored_index["executions"][0]["goldVersionSource"] == "dataset-version-fallback"
+    assert stored_index["executions"][0]["goldReviewStatus"] == "unknown"
+    assert stored_index["executions"][0]["goldSha256"] == hashlib.sha256(
+        evaluator_input().gold_text.encode("utf-8")
+    ).hexdigest()
+    assert "goldText" not in stored_index["executions"][0]
 
 
 @pytest.mark.asyncio
@@ -157,12 +165,18 @@ async def test_same_prediction_can_be_evaluated_again_without_overwrite(tmp_path
         settings,
         EvaluationArtifactStore(tmp_path, "rerun-001"),
     ).run((evaluator_input(),), "rerun-001")
+    revised_gold = evaluator_input().model_copy(
+        update={"gold_text": evaluator_input().gold_text + " uh"}
+    )
     second = await EvaluationOrchestrator(
         registry,
         settings,
         EvaluationArtifactStore(tmp_path, "rerun-002"),
-    ).run((evaluator_input(),), "rerun-002")
+    ).run((revised_gold,), "rerun-002")
 
     assert first.executions[0].prediction_id == second.executions[0].prediction_id
+    assert first.executions[0].gold_version == second.executions[0].gold_version
+    assert first.executions[0].gold_sha256 != second.executions[0].gold_sha256
+    assert first.executions[0].prediction_sha256 == second.executions[0].prediction_sha256
     assert (tmp_path / "rerun-001" / "index.json").is_file()
     assert (tmp_path / "rerun-002" / "index.json").is_file()

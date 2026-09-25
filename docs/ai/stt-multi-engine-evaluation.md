@@ -96,6 +96,13 @@ ID나 평가 결과를 합치는 키가 아니다.
 `backend/evals/transcription/supplements.example.json`에 있다.
 
 - Gold intended는 Nyra가 Gold에서 verbatim 사건 label을 만들 때 필요하다.
+- `goldVersion`은 해당 샘플 정답의 개정판이다. `goldConventionVersion`은 정답을
+  작성할 때 적용한 규칙 버전이므로 두 값을 구별한다.
+- `goldReviewStatus`는 `unknown`, `draft`, `single-reviewed`, `independent-reviewed` 중
+  하나다. 검수 완료 상태에는 `goldVersion`과 원문 `goldSha256`을 기록한다. 실행 시
+  manifest의 텍스트와 이 해시가 다르면 거부한다. 규칙 버전이 확인되지 않았다면
+  `goldConventionVersion`을 비워 두고, 독립 검수 완료를 기록할 때는 규칙 버전도 요구한다. 프로그램은
+  청취 사실 자체를 증명하지 않으므로 검수 초안과 판정 기록은 비공개로 별도 보관한다.
 - Prediction intended는 Nyra의 intended 계열 결과가 필요할 때 넣는다.
 - MeetEval segment는 Gold와 Prediction 양쪽이 모두 있어야 한다.
 - 화자 없는 segment, 한쪽만 있는 segment, 일부만 시간이 있는 segment는 자동 보완하지
@@ -104,6 +111,20 @@ ID나 평가 결과를 합치는 키가 아니다.
 
 supplements는 원문을 대체하지 않고 추가 메타데이터만 제공한다. `sampleId`가 manifest에
 없거나 중복이면 실행 전에 거부한다.
+
+supplements가 없으면 평가 실행은 계속 가능하지만 `goldVersion`은 데이터셋 버전에서
+임시로 가져오고 `goldVersionSource`를 `dataset-version-fallback`, `goldReviewStatus`를
+`unknown`으로 기록한다. 이는 Gold가 독립 검수됐다는 뜻이 아니다.
+
+### 실제 녹음의 Gold 검수 순서
+
+`manifest.local.json`의 `referenceTranscript`는 평가 입력으로 사용되고,
+`samples/` 아래의 해당 음성 파일이 원음이다. 각 녹음을 모델 답안을 보지 않고
+독립 작성·재청취한다. 필러, 반복, false start,
+조각, 불명확 구간을 [`Gold 작성 규범`](gold-transcript-guide.md)에 따라 판정한 뒤
+검수 기록을 비공개로 남긴다. 한 명만 검수했다면 `single-reviewed`로 표시한다.
+Gold 내용이 바뀌면 이전 manifest를 덮어쓰지 말고 새 데이터셋 개정판과 새 평가
+실행 ID를 부여한다. 원음 파일 자체도 고정됐는지 파일 SHA-256으로 확인한다.
 
 ## 6. 설치와 실행
 
@@ -164,9 +185,12 @@ results/<evaluation-run-id>/
       └─ nist-sctk.txt
 ```
 
-`index.json`은 experiment/sample/prediction ID, Gold·Prediction 버전, evaluator ID와
-버전, 정규화 프로필, 시작·완료 시각, 상태, 원본 결과 상대 경로와 SHA-256, 오류 또는
-미지원 사유를 기록한다. Gold나 Prediction 본문은 색인에 복제하지 않는다.
+새 `index.json`의 스키마는 `stt-evaluator-index-v2`다. experiment/sample/prediction ID,
+Gold·Prediction 버전, Gold 버전 출처·검수 상태·규칙 버전, 원문 UTF-8 SHA-256,
+evaluator ID와 버전, 정규화 프로필, 시작·완료 시각, 상태, 원본 결과 상대 경로와
+SHA-256, 오류 또는 미지원 사유를 기록한다. 해시는 **정규화하지 않은 텍스트 값**으로
+계산한다. Gold나 Prediction 본문은 색인에 복제하지 않는다. 기존 v1 색인은 바꾸거나
+소급해 `reviewed`로 표시하지 않는다.
 
 JiWER 원본 결과의 축약 예시는 다음과 같다. 실제 파일에는 정렬 구간과 문자 결과도
 포함된다.

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 from datetime import datetime
 from typing import Literal, Self
 
@@ -27,11 +28,28 @@ class EvaluationSupplement(ApiModel):
     sample_id: str = Field(pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
     prediction_id: str | None = Field(default=None, min_length=1, max_length=200)
     gold_version: str | None = Field(default=None, min_length=1, max_length=200)
+    gold_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    gold_convention_version: str | None = Field(default=None, min_length=1, max_length=200)
+    gold_review_status: Literal["unknown", "draft", "single-reviewed", "independent-reviewed"] = (
+        "unknown"
+    )
     prediction_version: str | None = Field(default=None, min_length=1, max_length=200)
     gold_intended_text: str | None = Field(default=None, max_length=20_000)
     prediction_intended_text: str | None = Field(default=None, max_length=20_000)
     reference_segments: tuple[TranscriptSegment, ...] | None = None
     prediction_segments: tuple[TranscriptSegment, ...] | None = None
+
+    @model_validator(mode="after")
+    def validate_review_provenance(self) -> Self:
+        if self.gold_review_status in {"single-reviewed", "independent-reviewed"} and (
+            self.gold_version is None or self.gold_sha256 is None
+        ):
+            raise ValueError("reviewed Gold requires goldVersion and goldSha256")
+        if self.gold_review_status == "independent-reviewed" and (
+            self.gold_convention_version is None
+        ):
+            raise ValueError("independently reviewed Gold requires goldConventionVersion")
+        return self
 
 
 class EvaluationSupplements(ApiModel):
@@ -51,6 +69,13 @@ class EvaluatorInput(ApiModel):
     sample_id: str = Field(pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
     prediction_id: str
     gold_version: str
+    gold_version_source: Literal["supplement", "dataset-version-fallback"] = (
+        "dataset-version-fallback"
+    )
+    gold_convention_version: str | None = None
+    gold_review_status: Literal["unknown", "draft", "single-reviewed", "independent-reviewed"] = (
+        "unknown"
+    )
     prediction_version: str
     gold_text: str = Field(max_length=20_000)
     prediction_text: str = Field(max_length=20_000)
@@ -68,6 +93,14 @@ class EvaluatorInput(ApiModel):
     reference_segments: tuple[TranscriptSegment, ...] | None = None
     prediction_segments: tuple[TranscriptSegment, ...] | None = None
 
+    @property
+    def gold_sha256(self) -> str:
+        return hashlib.sha256(self.gold_text.encode("utf-8")).hexdigest()
+
+    @property
+    def prediction_sha256(self) -> str:
+        return hashlib.sha256(self.prediction_text.encode("utf-8")).hexdigest()
+
 
 EvaluationExecutionStatus = Literal["success", "unsupported", "failed"]
 
@@ -78,7 +111,12 @@ class EvaluatorExecution(ApiModel):
     sample_id: str
     prediction_id: str
     gold_version: str
+    gold_version_source: Literal["supplement", "dataset-version-fallback"]
+    gold_convention_version: str | None = None
+    gold_review_status: Literal["unknown", "draft", "single-reviewed", "independent-reviewed"]
+    gold_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
     prediction_version: str
+    prediction_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
     evaluator_id: str
     evaluator_version: str
     normalization_profile: str
@@ -109,7 +147,7 @@ class EvaluatorExecution(ApiModel):
 
 
 class EvaluationRunIndex(ApiModel):
-    schema_version: Literal["stt-evaluator-index-v1"] = "stt-evaluator-index-v1"
+    schema_version: Literal["stt-evaluator-index-v2"] = "stt-evaluator-index-v2"
     evaluation_run_id: str
     created_at: datetime
     max_concurrency: int = Field(ge=1, le=32)

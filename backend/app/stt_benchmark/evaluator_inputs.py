@@ -51,6 +51,12 @@ def build_evaluator_inputs(
     for sample in dataset.samples:
         observation = observations[sample.id]
         supplement = supplement_by_id.get(sample.id)
+        if supplement and supplement.gold_sha256:
+            actual_gold_hash = hashlib.sha256(
+                sample.reference_transcript.encode("utf-8")
+            ).hexdigest()
+            if actual_gold_hash != supplement.gold_sha256:
+                raise ValueError(f"Gold text SHA-256 differs from supplement for {sample.id}")
         inputs.append(
             EvaluatorInput(
                 experiment_id=run.experiment_id,
@@ -70,6 +76,15 @@ def build_evaluator_inputs(
                     if supplement and supplement.gold_version
                     else dataset.version
                 ),
+                gold_version_source=(
+                    "supplement"
+                    if supplement and supplement.gold_version
+                    else "dataset-version-fallback"
+                ),
+                gold_convention_version=(
+                    supplement.gold_convention_version if supplement else None
+                ),
+                gold_review_status=(supplement.gold_review_status if supplement else "unknown"),
                 prediction_version=(
                     supplement.prediction_version
                     if supplement and supplement.prediction_version

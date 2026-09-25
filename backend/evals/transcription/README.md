@@ -140,6 +140,9 @@ docker run --rm --network none --mount "type=bind,source=$evalDir,target=/evals"
 덮어쓰지 않으므로 재평가에는 새 실행 ID를 쓴다. Nyra·SCTK·HF Evaluate·MeetEval의
 설치 상태와 supplements 입력은
 [`멀티 엔진 평가 문서`](../../../docs/ai/stt-multi-engine-evaluation.md)를 확인한다.
+새 실행의 색인 v2에는 정규화 전 Gold·Prediction의 UTF-8 SHA-256과 Gold 개정판 출처가
+함께 기록된다. 해시가 같으면 채점한 텍스트 값이 같았다는 근거가 되지만, 사람이 원음을
+듣고 정답을 검수했다는 증거는 아니다.
 
 ## source 값
 

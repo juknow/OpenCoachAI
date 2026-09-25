@@ -1,4 +1,5 @@
 import asyncio
+import hashlib
 import importlib.util
 import json
 import os
@@ -88,6 +89,8 @@ def test_input_builder_preserves_raw_gold_and_prediction_text() -> None:
             EvaluationSupplement(
                 sample_id="raw-text-001",
                 gold_version="gold-v2",
+                gold_convention_version="gold-v1-rc1",
+                gold_review_status="draft",
                 prediction_version="prediction-v3",
                 gold_intended_text="I wanted that.",
             ),
@@ -99,7 +102,68 @@ def test_input_builder_preserves_raw_gold_and_prediction_text() -> None:
     assert value.gold_text == gold
     assert value.prediction_text == prediction
     assert value.gold_version == "gold-v2"
+    assert value.gold_version_source == "supplement"
+    assert value.gold_review_status == "draft"
+    assert value.gold_convention_version == "gold-v1-rc1"
     assert value.prediction_version == "prediction-v3"
+    assert value.gold_sha256 == hashlib.sha256(gold.encode("utf-8")).hexdigest()
+    assert value.prediction_sha256 == hashlib.sha256(prediction.encode("utf-8")).hexdigest()
+    assert value.model_copy(update={"gold_text": gold + " "}).gold_sha256 != value.gold_sha256
+
+    checked = EvaluationSupplements(
+        samples=(
+            EvaluationSupplement(
+                sample_id="raw-text-001",
+                gold_version="raw-text-gold-v1",
+                gold_sha256=hashlib.sha256(gold.encode("utf-8")).hexdigest(),
+                gold_review_status="single-reviewed",
+            ),
+        )
+    )
+    assert build_evaluator_inputs(dataset, run, checked)[0].gold_review_status == "single-reviewed"
+
+    stale = checked.model_copy(
+        update={
+            "samples": (
+                checked.samples[0].model_copy(update={"gold_sha256": "0" * 64}),
+            )
+        }
+    )
+    with pytest.raises(ValueError, match="Gold text SHA-256 differs"):
+        build_evaluator_inputs(dataset, run, stale)
+
+
+def test_reviewed_gold_requires_explicit_revision_and_hash_without_inventing_convention() -> None:
+    with pytest.raises(ValueError, match="reviewed Gold requires goldVersion and goldSha256"):
+        EvaluationSupplement(
+            sample_id="raw-text-001",
+            gold_review_status="single-reviewed",
+        )
+
+    single_reviewed = EvaluationSupplement(
+        sample_id="raw-text-001",
+        gold_version="raw-text-gold-v1",
+        gold_sha256="a" * 64,
+        gold_review_status="single-reviewed",
+    )
+    assert single_reviewed.gold_convention_version is None
+
+    with pytest.raises(ValueError, match="requires goldConventionVersion"):
+        EvaluationSupplement(
+            sample_id="raw-text-001",
+            gold_version="raw-text-gold-v1",
+            gold_sha256="a" * 64,
+            gold_review_status="independent-reviewed",
+        )
+
+    independent_reviewed = EvaluationSupplement(
+        sample_id="raw-text-001",
+        gold_version="raw-text-gold-v1",
+        gold_sha256="a" * 64,
+        gold_convention_version="gold-v1-rc1",
+        gold_review_status="independent-reviewed",
+    )
+    assert independent_reviewed.gold_review_status == "independent-reviewed"
 
 
 @pytest.mark.asyncio

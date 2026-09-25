@@ -3,7 +3,9 @@
   "samples": [
     {
       "sampleId": "clean-filler-001",
-      "goldVersion": "gold-v1-rc1",
+      "goldVersion": "clean-filler-gold-v1",
+      "goldConventionVersion": "gold-v1-rc1",
+      "goldReviewStatus": "draft",
       "predictionVersion": "mini-prompt-v1-attempt-1",
       "goldIntendedText": "I usually go there on weekends.",
       "predictionIntendedText": "I usually go there on weekends.",
