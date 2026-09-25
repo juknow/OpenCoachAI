@@ -275,21 +275,33 @@ WER = (대체한 단어 + 빠뜨린 단어 + 추가한 단어) / 정답 단어 �
 
 ## 14. 현재 구현 상태
 
-현재 저장소에는 다음 오프라인 평가 기반이 구현되어 있다.
+현재 저장소에는 다음 오프라인 평가 기반이 구현되어 있다. 중심 파일은
+`backend/app/stt_benchmark/evaluation_engine.py`다. 이 파일은 모델을 호출하거나
+JSON을 읽지 않고 전달받은 데이터셋과 실행 결과만 채점한다.
 
-- `backend/app/evals/transcription_dataset.py`: 평가 manifest 계약
-- `backend/app/evals/transcription_run.py`: 모델 실행 결과 계약
-- `backend/app/evals/transcription_metrics.py`: WER, 필러, 연속 반복어 지표
-- `backend/app/evals/transcription_report.py`: 전체 및 sample별 성적표 계산
-- `backend/app/evals/transcription_cli.py`: JSON 성적표 생성 CLI
-- `backend/app/evals/transcription_execute_cli.py`: 동의 평가 음성의 로컬 Whisper 실행 및 run JSON 생성 CLI
+- `backend/app/stt_benchmark/contracts/`: 평가 manifest·실행 결과·성적표 계약
+- `backend/app/stt_benchmark/metrics/`: WER, 필러, 연속 반복어, 비음성 단어 계산
+- `backend/app/stt_benchmark/evaluation_engine.py`: sample별 계산과 전체 성적표 조정
+- `backend/app/stt_benchmark/transcription_runner.py`: 주입받은 STT provider로 평가 음성 실행
+- `backend/app/stt_benchmark/interfaces/cli/`: JSON 입출력과 명령행 인자 처리
+- `backend/app/evals/transcription_*.py`: 기존 import와 실행 명령을 위한 호환 경로
 - `backend/evals/transcription/`: 공개 예시와 로컬 자료 배치 안내
 - `docs/ai/gold-transcript-guide.md`: Gold 작성·검수 규범안 (`gold-v1-rc1`, 파일럿 전)
+
+새 통합 명령은 아래처럼 실행한다. 기존 `app.evals.transcription_cli`와
+`app.evals.transcription_execute_cli` 명령도 같은 구현으로 계속 동작한다.
+
+```powershell
+python -m app.stt_benchmark evaluate --manifest <manifest.json> --run <run.json>
+python -m app.stt_benchmark transcribe --manifest <manifest.json> --output <results/run.json> --experiment-id <id>
+```
 
 아직 구현하지 않은 항목:
 
 - 동의받은 실제 비원어민 평가 음성 세트
 - OpenAI 등 다른 STT 공급자의 실제 실행 adapter와 설정 비교 게이트
+- 주입식 지표 프로필과 fragment·false start·pause 자동 지표
+- PostgreSQL 공동 저장소, 연구 API, 작업 worker와 Docker 배포 구성
 - false start와 사람이 표시한 문법·어휘 오류의 보존 지표
 - Gold 주석 파일의 자동 검증·채점용 추출·평가 묶음 필터, 불명확 구간 제외, stutter·pause 채점
 - 실제 API usage를 이용한 오디오 1분당 비용 집계
