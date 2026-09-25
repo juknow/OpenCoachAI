@@ -34,6 +34,8 @@ OpenCoachAI는 영어로 말한 OPIc 연습 답변을 글자로 옮기고, 그 �
 2. 시스템 전체 흐름은 `docs/architecture/`에서 읽는다.
 3. 첫 번째 개선 대상인 녹음과 전사는 `docs/frontend/`, `docs/backend/`,
    `docs/ai/`의 관련 문서에서 자세히 읽는다.
+   STT 평가 정답 작성 기준은 [`Gold Transcript 규범안`](docs/ai/gold-transcript-guide.md)에서
+   확인한다. 현재 `gold-v1-rc1`은 실제 음성 파일럿 검증 전이다.
 4. 브랜치와 커밋 규칙은
    [`docs/contributing/git-convention.md`](docs/contributing/git-convention.md)에서 확인한다.
 

@@ -18,12 +18,36 @@ transcription/
 
 1. `manifest.example.json`을 `manifest.local.json`으로 복사한다.
 2. 명시적 동의를 받았거나 공개 사용이 허용된 음성만 `samples/`에 둔다.
-3. 각 음성을 사람이 확인해 `referenceTranscript`를 작성한다.
+3. [`gold-v1-rc1` 규범안](../../../docs/ai/gold-transcript-guide.md)에 따라 두 사람이
+   모델 출력을 보지 않고 독립적으로 전체 Gold를 작성한다. 현재는 파일럿 검증 전이다.
+   단어·필러가 미확정인 자료는 보류하고, 조각·단어 내부 중단·혼용 언어·복수 화자는
+   수동 도전 자료로 보관한다. 주 비교 manifest에는 적격 단어 평가 자료와 별도
+   비음성·입력 거부 검사 자료만 넣는다. 분리한 자료의 수와 이유도 기록한다.
 4. 음성의 특징을 소문자 tag로 기록한다.
-5. manifest 검증 테스트를 실행한다.
+5. Gold에서 추출한 `referenceTranscript`를 대조한 뒤 아래 명령으로 로컬 manifest를 검사한다.
+
+주석 파일 `samples/<sample-id>.gold.json`은 음성과 함께 Git에서 제외된다. 현재
+평가 CLI는 이 파일을 읽거나 검사하지 않는다. 작성 규범의 검수 상태·평가 묶음은
+자동으로 반영되지 않으며, tag만 붙여도 제외되지 않는다. 조각을 그대로 출력한 모델이
+현 채점에서 감점될 수 있으므로 조각 자료의 점수를 주 WER와 합치지 않는다.
+JSON 형식 검사만으로 Gold의 내용이나 실제 녹음과의 일치가 검증되지는 않는다.
+
+다음은 `backend/`에서 실행한다. 성공하면 요약 문장만 출력하고 전사문은 출력하지 않는다.
+이 명령은 manifest 계약을 검사하며, 음성·Gold 파일의 존재나 내용은 검사하지 않는다.
 
 ```powershell
-.\.venv\Scripts\python.exe -m pytest tests/test_transcription_dataset.py
+@'
+from pathlib import Path
+from app.evals.transcription_dataset import TranscriptionDataset
+
+try:
+    TranscriptionDataset.model_validate_json(
+        Path("evals/transcription/manifest.local.json").read_text(encoding="utf-8")
+    )
+except (OSError, ValueError):
+    raise SystemExit("Manifest validation failed; inspect the private file locally.")
+print("Manifest schema valid.")
+'@ | .\.venv\Scripts\python.exe -
 ```
 
 ## 저장된 실행 결과 평가하기
