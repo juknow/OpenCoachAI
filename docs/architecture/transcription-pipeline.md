@@ -39,7 +39,7 @@ httpCoachService.transcribe
 FastAPI transcription route
   │
   ▼
-TranscriptionService
+TranscriptionProcessor
   │ 시간·크기·MIME·signature 검증
   ▼
 OpenAITranscriptionProvider.transcribe
@@ -117,7 +117,7 @@ Content-Type: multipart/form-data
 
 ## 7. 백엔드 파일 검증
 
-`backend/app/services/transcription_service.py`는 외부 API 호출 전에 다음 순서로
+`backend/app/services/transcription_processor.py`는 외부 API 호출 전에 다음 순서로
 검사한다.
 
 | 검사 | 현재 기준 | 실패 코드 |

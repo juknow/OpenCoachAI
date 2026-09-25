@@ -5,7 +5,7 @@ from app.config import Settings, get_settings
 from app.errors import request_id_for
 from app.providers.base import TranscriptionProvider
 from app.schemas.transcription import TranscriptionMetadata, TranscriptionResponse
-from app.services.transcription_service import TranscriptionService
+from app.services.transcription_processor import TranscriptionProcessor
 
 router = APIRouter(prefix="/api", tags=["transcriptions"])
 
@@ -21,8 +21,8 @@ async def create_transcription(
 ) -> TranscriptionResponse:
     del attempt_number
     content = await audio.read(settings.max_audio_bytes + 1)
-    service = TranscriptionService(provider, settings, read_prompt("transcription.txt"))
-    result = await service.transcribe(
+    processor = TranscriptionProcessor(provider, settings, read_prompt("transcription.txt"))
+    result = await processor.transcribe(
         audio=content,
         filename=audio.filename,
         content_type=audio.content_type,

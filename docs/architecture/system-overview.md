@@ -77,7 +77,7 @@ OpenCoachAI에는 네 명의 일꾼이 있다.
 - `frontend/src/services/httpCoachService.ts`
 - `frontend/src/services/transcriptMetricsService.ts`
 - `backend/app/api/routes/transcriptions.py`
-- `backend/app/services/transcription_service.py`
+- `backend/app/services/transcription_processor.py`
 - `backend/app/providers/openai_provider.py`
 - `backend/app/prompts/transcription.txt`
 

@@ -5,11 +5,11 @@
 백엔드는 세 사람이 줄을 서서 일하는 구조다.
 
 ```text
-Route 접수원 → Service 검사원 → Provider 외부 연락 담당
+Route 접수원 → Processor 공통 처리 담당 → Provider STT 연결 담당
 ```
 
 - **Route**는 브라우저 요청을 받는다.
-- **Service**는 오디오가 규칙에 맞는지 검사한다.
+- **Processor**는 입력을 검사하고 파일명을 정리한 뒤 provider에 전사를 맡기고 결과를 확인한다.
 - **Provider**는 선택한 STT 모델을 호출하고 공통 결과로 바꾼다.
 
 이 역할을 나눈 이유는 외부 AI를 바꾸거나 테스트할 때 HTTP 코드와 도메인 규칙을
@@ -20,7 +20,7 @@ Route 접수원 → Service 검사원 → Provider 외부 연락 담당
 | 파일 | 책임 |
 |---|---|
 | `app/api/routes/transcriptions.py` | multipart 입력과 HTTP 응답 |
-| `app/services/transcription_service.py` | 시간, 크기, 형식, signature 검증 |
+| `app/services/transcription_processor.py` | 시간·크기·형식·signature 검증, 안전한 파일명 구성, provider 호출, 빈 결과 검사 |
 | `app/providers/base.py` | provider가 지켜야 할 Protocol과 공통 결과 |
 | `app/providers/openai_provider.py` | OpenAI SDK 호출, retry, usage 기록 |
 | `app/providers/local_whisper_provider.py` | 로컬 Whisper 모델을 공통 전사 결과에 연결하는 비교용 adapter |
@@ -85,7 +85,7 @@ audio.read(max_audio_bytes + 1)
 ```
 
 이렇게 해야 업로드 전체를 무제한으로 읽지 않으면서 제한을 넘겼는지 확인할 수 있다.
-읽은 bytes와 metadata를 `TranscriptionService`에 전달한다.
+읽은 bytes와 metadata를 `TranscriptionProcessor`에 전달한다.
 
 Route가 직접 하지 않는 일:
 

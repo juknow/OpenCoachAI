@@ -33,7 +33,7 @@ def signature_matches(data: bytes, mime_type: str) -> bool:
     return False
 
 
-class TranscriptionService:
+class TranscriptionProcessor:
     def __init__(self, provider: TranscriptionProvider, settings: Settings, prompt: str) -> None:
         self._provider = provider
         self._settings = settings

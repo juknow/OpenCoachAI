@@ -19,7 +19,7 @@ from app.evals.transcription_run import (
     TranscriptionRunConfig,
 )
 from app.providers.base import TranscriptionProvider
-from app.services.transcription_service import SUPPORTED_MIME_TYPES, TranscriptionService
+from app.services.transcription_processor import SUPPORTED_MIME_TYPES, TranscriptionProcessor
 
 DEFAULT_MAX_AUDIO_BYTES = 5_000_000
 
@@ -63,7 +63,7 @@ async def execute_dataset(
     model_name: str,
     max_audio_bytes: int,
 ) -> TranscriptionRun:
-    service = TranscriptionService(
+    processor = TranscriptionProcessor(
         provider=provider,
         settings=Settings(max_audio_bytes=max_audio_bytes),
         prompt="",  # Local Whisper does not use the product's OpenAI prompt.
@@ -74,7 +74,7 @@ async def execute_dataset(
         audio = path.read_bytes()
         started = perf_counter()
         try:
-            result = await service.transcribe(
+            result = await processor.transcribe(
                 audio=audio,
                 filename=path.name,
                 content_type=_mime_for_sample(sample),

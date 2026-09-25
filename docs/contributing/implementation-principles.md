@@ -34,8 +34,8 @@
 
 ## 현재 STT 실험 도구에 적용
 
-**현재 구현:** `TranscriptionService`가 파일 형식·크기를 검사하고
-`TranscriptionProvider`로 전사한다. 평가에는 별도 `EvaluationProvider` 계약을
+**현재 구현:** `TranscriptionProcessor`가 입력을 검사하고
+`TranscriptionProvider`로 전사를 조정한다. 평가에는 별도 `EvaluationProvider` 계약을
 사용한다. API 경로는 각각 `get_transcription_provider`,
 `get_evaluation_provider`로 연결된다. 현재는 전사용
 `OpenAITranscriptionProvider`와 평가용 `OpenAIEvaluationProvider`가 연결되며,

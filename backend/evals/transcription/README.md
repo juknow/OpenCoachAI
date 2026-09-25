@@ -32,7 +32,7 @@ transcription/
 
 **현재 구현:** 아래 명령은 `manifest.local.json`과 음성 파일의 존재를 먼저 확인한다.
 `--execute-live`를 붙여야 `small.en`을 CPU `int8`로 실행한다. 실행할 때는 제품과 같은
-`TranscriptionService`의 파일 검사와 `LocalWhisperTranscriptionProvider`를 사용한다.
+`TranscriptionProcessor`의 입력 검사와 `LocalWhisperTranscriptionProvider`를 사용한다.
 평가 음성에 맞춰 파일 상한만 기본 5MB로 높이고, 이 값은 run JSON에 기록한다.
 모델 로딩은 측정 전에 끝내므로 `latencyMs`는 준비된 모델의 파일 검사·전사 시간이다.
 로컬 모델은 API 요금이 없지만 모델 다운로드와 CPU 사용은 발생할 수 있다.
