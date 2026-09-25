@@ -59,6 +59,21 @@ python -m ruff check .
 python -m compileall app
 ```
 
+## 저장된 STT 답안의 멀티 엔진 평가
+
+제품 API와 별도로, 저장된 Gold와 Prediction을 Custom·JiWER 등 독립 평가기에 전달할
+수 있다. 선택 의존성은 제품/개발 의존성과 분리되어 있다.
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install -r requirements-benchmark.txt
+.\.venv\Scripts\python.exe -m app.stt_benchmark evaluate-engines --help
+```
+
+이 명령은 STT 모델이나 유료 API를 호출하지 않는다. 평가기별 입력 조건, 외부 실행
+파일, 라이선스, 실행 예시는
+[`멀티 엔진 평가 문서`](../docs/ai/stt-multi-engine-evaluation.md)를 확인한다. 평가 도구는
+제품 Docker 이미지에 포함하지 않았다.
+
 ## Docker에서 로컬 Whisper 전사 선택
 
 **현재 구현:** 기본 `TRANSCRIPTION_PROVIDER=openai`는 기존 전사 경로를 유지한다.

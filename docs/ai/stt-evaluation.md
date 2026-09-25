@@ -284,6 +284,11 @@ JSON을 읽지 않고 전달받은 데이터셋과 실행 결과만 채점한다
 - `backend/app/stt_benchmark/evaluation_engine.py`: sample별 계산과 전체 성적표 조정
 - `backend/app/stt_benchmark/transcription_runner.py`: 주입받은 STT provider로 평가 음성 실행
 - `backend/app/stt_benchmark/interfaces/cli/`: JSON 입출력과 명령행 인자 처리
+- `backend/app/stt_benchmark/evaluation_orchestrator.py`: 여러 독립 평가기의 병렬 실행과
+  실패 격리
+- `backend/app/stt_benchmark/evaluators/`: Custom, JiWER, Nyra, SCTK, HF Evaluate,
+  MeetEval adapter
+- `backend/app/stt_benchmark/storage/`: 평가기별 native 결과와 최소 실행 인덱스 저장
 - `backend/app/evals/transcription_*.py`: 기존 import와 실행 명령을 위한 호환 경로
 - `backend/evals/transcription/`: 공개 예시와 로컬 자료 배치 안내
 - `docs/ai/gold-transcript-guide.md`: Gold 작성·검수 규범안 (`gold-v1-rc1`, 파일럿 전)
@@ -293,19 +298,25 @@ JSON을 읽지 않고 전달받은 데이터셋과 실행 결과만 채점한다
 
 ```powershell
 python -m app.stt_benchmark evaluate --manifest <manifest.json> --run <run.json>
+python -m app.stt_benchmark evaluate-engines --manifest <manifest.json> --run <run.json> --output-dir <results-dir> --evaluation-run-id <id> --evaluators custom,jiwer
 python -m app.stt_benchmark transcribe --manifest <manifest.json> --output <results/run.json> --experiment-id <id>
 ```
+
+`evaluate`는 기존 통합 성적표 의미와 호환성을 유지한다. `evaluate-engines`는 평가기끼리
+결과를 합치거나 순위를 만들지 않고 각 native 결과를 별도 보존한다. 평가기별 설치 방법,
+입력 조건, 라이선스와 현재 검증 상태는
+[`stt-multi-engine-evaluation.md`](stt-multi-engine-evaluation.md)를 따른다.
 
 아직 구현하지 않은 항목:
 
 - 동의받은 실제 비원어민 평가 음성 세트
 - OpenAI 등 다른 STT 공급자의 실제 실행 adapter와 설정 비교 게이트
-- 주입식 지표 프로필과 fragment·false start·pause 자동 지표
+- fragment·위치 기반 filler·false start·pause 자동 Custom 지표
 - PostgreSQL 공동 저장소, 연구 API, 작업 worker와 Docker 배포 구성
 - false start와 사람이 표시한 문법·어휘 오류의 보존 지표
 - Gold 주석 파일의 자동 검증·채점용 추출·평가 묶음 필터, 불명확 구간 제외, stutter·pause 채점
 - 실제 API usage를 이용한 오디오 1분당 비용 집계
-- 두 실험 결과를 gate 기준으로 자동 비교하는 명령
+- 여러 평가기 결과의 자동 비교·종합·순위·보고서(현재 요구 범위에서 의도적으로 제외)
 
 현재 CLI는 이미 저장한 모델 실행 결과를 평가하며 외부 API를 호출하거나 비용을
 발생시키지 않는다. 실행 방법은

@@ -41,6 +41,7 @@ data/temp/*
 backend/evals/transcription/samples/*
 backend/evals/transcription/results/*
 backend/evals/transcription/manifest.local.json
+backend/evals/transcription/supplements.local.json
 
 # Keep empty folders
 !data/recordings/.gitkeep

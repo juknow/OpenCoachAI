@@ -9,7 +9,9 @@
 transcription/
 ├─ README.md
 ├─ manifest.example.json   공개 가능한 구조 예시
+├─ supplements.example.json 평가기별 추가 입력의 공개 형식 예시
 ├─ manifest.local.json     로컬 실제 목록, Git에서 제외
+├─ supplements.local.json  intended·화자·시간 정보, Git에서 제외
 ├─ samples/                평가 음성, Git에서 제외
 └─ results/                모델 전사 결과, Git에서 제외
 ```
@@ -116,6 +118,28 @@ docker run --rm --network none --mount "type=bind,source=$evalDir,target=/evals"
 - 기대와 다른 결과 수
 - latency p50과 p95
 - sample별 상세 점수
+
+## 여러 독립 평가기로 같은 답안 평가하기
+
+기존 성적표와 별개로 Custom·JiWER 등 여러 평가기를 선택해 동시에 실행할 수 있다.
+평가기 하나가 실패하거나 설치되지 않아도 다른 평가기는 계속되며 결과를 합산하거나
+순위로 바꾸지 않는다.
+
+```powershell
+.\.venv\Scripts\python.exe -m app.stt_benchmark evaluate-engines `
+  --manifest evals/transcription/manifest.example.json `
+  --run evals/transcription/run.example.json `
+  --output-dir evals/transcription/results `
+  --evaluation-run-id example-evaluation-001 `
+  --evaluators custom,jiwer `
+  --max-concurrency 2
+```
+
+결과는 `results/example-evaluation-001/index.json`과
+`results/example-evaluation-001/raw/<sample-id>/<evaluator-id>.*`에 저장된다. 기존 폴더를
+덮어쓰지 않으므로 재평가에는 새 실행 ID를 쓴다. Nyra·SCTK·HF Evaluate·MeetEval의
+설치 상태와 supplements 입력은
+[`멀티 엔진 평가 문서`](../../../docs/ai/stt-multi-engine-evaluation.md)를 확인한다.
 
 ## source 값
 

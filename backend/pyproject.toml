@@ -1,6 +1,10 @@
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+markers = [
+    "external_integration: requires an optional third-party evaluator installation",
+    "network_integration: downloads evaluator code or data from an official remote source",
+]
 
 [tool.ruff]
 target-version = "py312"

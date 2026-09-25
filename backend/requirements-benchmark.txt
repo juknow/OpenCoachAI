@@ -1,0 +1,6 @@
+-r requirements-dev.txt
+jiwer==4.0.0
+evaluate==0.4.6
+# MeetEval 0.4.3 publishes no Windows/Python 3.12 wheel and its current
+# source build fails with the upstream C++ standard flags on that platform.
+meeteval==0.4.3; platform_system != "Windows"

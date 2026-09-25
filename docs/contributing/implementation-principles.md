@@ -42,16 +42,18 @@
 두 구현은 기존 OpenAI SDK 처리 코드를 내부에서 재사용한다.
 평가 manifest, run JSON 계약, 점수 계산기와 저장된 결과를 채점하는 CLI도 이미 있다.
 
-**다음 작업의 선택:** 평가 음성을 실행할 때 이 부품을 다시 사용하고, manifest의
-각 파일을 기존 서비스에 전달해 run JSON 관측값으로 바꾸는 연결 부분만 만든다.
-가짜 provider로 먼저 검증하므로 이 단계에서 실제 API 비용은 발생하지 않는다.
+**현재 평가 실행 선택:** 평가 음성을 실행할 때 기존 제품 부품을 다시 사용하고,
+저장된 manifest/run JSON 평가는 STT 호출과 분리한다. 여러 외부 평가기는 공통 계약의
+얇은 adapter로 연결하고 native 결과를 별도 보존한다. 자세한 현재 구현은
+[`../ai/stt-multi-engine-evaluation.md`](../ai/stt-multi-engine-evaluation.md)를 따른다.
 
 **검토한 대안:** [Hugging Face Evaluate의 음성 인식 평가기](https://huggingface.co/docs/evaluate/main/en/package_reference/evaluator_classes)는
 음성 인식 평가를 지원한다. [MLflow 평가 데이터셋](https://mlflow.org/docs/latest/genai/datasets/)은
-실험 자료 관리에 유용하지만 SQL 백엔드가 필요하다. 현재 작은 로컬 실험에서 두 도구는
-기존 제품의 파일 검사, OPIc용 필러·반복 보존 지표, run JSON 계약을 그대로
-대체하지 못하므로 이번 연결 작업에 도입하지 않는다. 평가 규모와 실험 관리 요구가
-커지면 다시 비교한다.
+실험 자료 관리에 유용하지만 SQL 백엔드가 필요하다. Hugging Face Evaluate는 기존 자체
+지표를 대체하지 않고 WER/CER native 결과를 추가하는 선택 평가기로 연결했다. MLflow는
+별도 실험 서버의 복잡도가 현재 파일 기반 반복 평가에 필요하지 않아 도입하지 않았다.
+평가 규모와 공동 운영 요구가 커지면 다시 비교한다.
 
-**아직 구현되지 않음:** 전사·평가의 다른 회사 또는 로컬 모델 선택, manifest
-음성을 실제로 실행해 run JSON을 생성하는 명령, 기준 설정·후보 설정의 자동 비교 게이트.
+**아직 구현되지 않음:** 전사의 다른 회사 provider, 중앙 공동 저장소, 기준 설정·후보
+설정의 자동 비교 게이트. 자동 비교·순위·보고서는 현재 멀티 엔진 평가 범위에서
+의도적으로 제외했다.

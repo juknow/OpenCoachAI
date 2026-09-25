@@ -37,6 +37,8 @@ OpenCoachAI는 영어로 말한 OPIc 연습 답변을 글자로 옮기고, 그 �
    STT 평가 정답 작성 기준은 [`Gold Transcript 규범안`](docs/ai/gold-transcript-guide.md)에서
    확인한다. 현재 `gold-v1-rc1`은 실제 음성 파일럿 검증 전이다.
    평가 코드의 중심 파일과 실행법은 [`STT 품질 평가 방법`](docs/ai/stt-evaluation.md)에서
+   확인한다. 여러 오픈소스 평가기를 독립 실행하는 방법은
+   [`멀티 엔진 Verbatim STT 평가 실행기`](docs/ai/stt-multi-engine-evaluation.md)에서
    확인한다.
 4. 브랜치와 커밋 규칙은
    [`docs/contributing/git-convention.md`](docs/contributing/git-convention.md)에서 확인한다.

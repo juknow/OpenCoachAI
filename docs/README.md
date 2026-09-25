@@ -37,6 +37,7 @@ docs/
 3. [`ai/stt-domain-guide.md`](ai/stt-domain-guide.md)
 4. [`ai/gold-transcript-guide.md`](ai/gold-transcript-guide.md)
 5. [`ai/stt-evaluation.md`](ai/stt-evaluation.md)
+6. [`ai/stt-multi-engine-evaluation.md`](ai/stt-multi-engine-evaluation.md)
 
 ### 협업과 커밋 규칙을 확인하는 사람
 
@@ -58,7 +59,9 @@ docs/
 | `ai/stt-domain-guide.md` | 도메인 안내 | OPIc 전사에 필요한 STT 기초와 설계 원칙 |
 | `ai/gold-transcript-guide.md` | 검토용 규범안 | `gold-v1-rc1`: 전체 verbatim 보존, 표기·독립 검수·시간 주석. 실제 음성 파일럿 전 |
 | `ai/stt-evaluation.md` | 구현 중 | 모델과 prompt를 비교할 평가 방법과 현재 도구 상태 |
+| `ai/stt-multi-engine-evaluation.md` | 현재 구현 | 여러 독립 평가기의 선택·병렬 실행, native 결과 저장, 설치 한계 |
 | `decisions/0001-gold-transcript-and-timing.md` | 재검토안 | Gold 원본과 현재 채점 범위를 분리한 이유·대안·검증 조건 |
+| `decisions/0002-independent-stt-evaluators.md` | 승인된 구현 | 평가기 결과를 합치지 않고 독립 보존하는 이유 |
 
 ## 문서 관리 규칙
 

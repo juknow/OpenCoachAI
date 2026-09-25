@@ -1,0 +1,28 @@
+{
+  "version": "stt-evaluator-input-v1",
+  "samples": [
+    {
+      "sampleId": "clean-filler-001",
+      "goldVersion": "gold-v1-rc1",
+      "predictionVersion": "mini-prompt-v1-attempt-1",
+      "goldIntendedText": "I usually go there on weekends.",
+      "predictionIntendedText": "I usually go there on weekends.",
+      "referenceSegments": [
+        {
+          "words": "Um, I I usually go there on weekends.",
+          "speaker": "speaker-1",
+          "startTime": 0.3,
+          "endTime": 5.4
+        }
+      ],
+      "predictionSegments": [
+        {
+          "words": "Um, I I usually go there on weekends.",
+          "speaker": "speaker-1",
+          "startTime": 0.3,
+          "endTime": 5.4
+        }
+      ]
+    }
+  ]
+}
