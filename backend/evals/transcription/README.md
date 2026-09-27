@@ -31,6 +31,11 @@ transcription/
 4. 음성의 특징을 소문자 tag로 기록한다.
 5. Gold에서 추출한 `referenceTranscript`를 대조한 뒤 아래 명령으로 로컬 manifest를 검사한다.
 
+**현재 로컬 파일럿:** park·travel 음성은 `explicit-test-consent` 자료이며,
+`supplements.local.json`의 Gold 검수 상태는 `single-reviewed`다. 위의 두 사람 독립
+검수는 목표 절차이지 이 두 샘플에서 완료된 작업이 아니다. 사건·시간 주석도 아직 원음
+검수 전이므로 현재 전사문을 확정 Gold 또는 검증된 verbatim 기준으로 표시하지 않는다.
+
 주석 파일 `samples/<sample-id>.gold.json`은 음성과 함께 Git에서 제외된다. 현재
 평가 CLI는 이 파일을 읽거나 검사하지 않는다. 작성 규범의 검수 상태·평가 묶음은
 자동으로 반영되지 않으며, tag만 붙여도 제외되지 않는다. 조각을 그대로 출력한 모델이
@@ -86,6 +91,12 @@ results/predictions/openai-gpt-transcribe-001/
 없다면 값을 만들지 말고 비워 둔다. 원본·run 파일은 Git에서 제외되며 출력 파일이
 이미 있으면 덮어쓰지 않는다.
 
+아래는 기존 `openai-gpt-transcribe-001` 배치를 처음 가져올 때의 **기록용 예시**다.
+현재 로컬에는 해당 `run.json`이 이미 있으므로 그대로 재실행하면 실패한다. 새 응답을
+가져올 때는 원본 파일을 새 비공개 배치 폴더에 두고 `--output`과 `--experiment-id`에
+새 값을 사용한다. 기존 배치를 다시 평가하려면 가져오기를 반복하지 말고 저장된
+`run.json`을 `evaluate-engines --run`에 전달한다.
+
 ```powershell
 .\.venv\Scripts\python.exe -m app.stt_benchmark import-openai `
   --manifest evals/transcription/manifest.local.json `
@@ -120,14 +131,17 @@ docker build -t opencoachai-backend:local-whisper -f backend/Dockerfile backend
 docker volume create opencoachai-whisper-cache
 $evalDir = (Resolve-Path -LiteralPath .\backend\evals\transcription).Path
 New-Item -ItemType Directory -Force .\backend\evals\transcription\results | Out-Null
-docker run --rm --network none --mount "type=bind,source=$evalDir,target=/evals" --entrypoint python opencoachai-backend:local-whisper -m app.evals.transcription_execute_cli --manifest /evals/manifest.local.json --output /evals/results/small-en-001.json --experiment-id small-en-001
+$runId = "small-en-$([guid]::NewGuid().ToString('N'))"
+$runOutput = "/evals/results/$runId.json"
+docker run --rm --network none --mount "type=bind,source=$evalDir,target=/evals" --entrypoint python opencoachai-backend:local-whisper -m app.evals.transcription_execute_cli --manifest /evals/manifest.local.json --output $runOutput --experiment-id $runId
 ```
 
 마지막 명령에 `--execute-live`를 덧붙이면 실제 전사를 실행한다. 같은 이름의 결과를
-덮어쓰지 않으므로 반복 측정은 `--output`과 `--experiment-id`에 새 번호를 쓴다.
+덮어쓰지 않는다. 위 검증 명령은 파일을 쓰지 않으므로 바로 아래 실제 실행에서
+같은 `$runId`를 재사용한다. 다음 반복 측정에는 새 `$runId`를 만든다.
 
 ```powershell
-docker run --rm --network none --mount "type=bind,source=$evalDir,target=/evals" --mount source=opencoachai-whisper-cache,target=/home/appuser/.cache/huggingface --entrypoint python opencoachai-backend:local-whisper -m app.evals.transcription_execute_cli --manifest /evals/manifest.local.json --output /evals/results/small-en-001.json --experiment-id small-en-001 --execute-live
+docker run --rm --network none --mount "type=bind,source=$evalDir,target=/evals" --mount source=opencoachai-whisper-cache,target=/home/appuser/.cache/huggingface --entrypoint python opencoachai-backend:local-whisper -m app.evals.transcription_execute_cli --manifest /evals/manifest.local.json --output $runOutput --experiment-id $runId --execute-live
 ```
 
 다른 컴퓨터에서는 저장소 코드와 별도로 `manifest.local.json`, `samples/`, `results/`를
@@ -137,8 +151,12 @@ docker run --rm --network none --mount "type=bind,source=$evalDir,target=/evals"
 실행 결과는 기존 채점 명령으로 분석한다.
 
 ```powershell
-docker run --rm --network none --mount "type=bind,source=$evalDir,target=/evals" --entrypoint python opencoachai-backend:local-whisper -m app.evals.transcription_cli --manifest /evals/manifest.local.json --run /evals/results/small-en-001.json --output /evals/results/small-en-001-report.json
+$reportOutput = "/evals/results/$runId-report.json"
+docker run --rm --network none --mount "type=bind,source=$evalDir,target=/evals" --entrypoint python opencoachai-backend:local-whisper -m app.evals.transcription_cli --manifest /evals/manifest.local.json --run $runOutput --output $reportOutput
 ```
+
+기존 단일 성적표 명령은 출력 경로가 이미 있으면 **덮어쓴다**. 과거 성적표를
+보존하려면 매번 새 `$reportOutput`을 지정한다.
 
 `run JSON`에는 모델 전사 원문이 들어 있다. 이 파일과 성적표를 콘솔에 출력하거나 Git에
 추가하지 않는다. 현재 필러·반복 지표는 단어의 위치까지 검증하지 않는 개수 기반
@@ -148,16 +166,18 @@ docker run --rm --network none --mount "type=bind,source=$evalDir,target=/evals"
 ### 저장된 답안 채점하기
 
 외부 API를 매번 다시 호출하지 않고, manifest와 저장된 모델 답안을 성적표로 바꿀 수
-있다. 아래 명령은 공개 예시 두 파일을 사용해 `results/example-report.json`을 만든다.
+있다. 아래 명령은 공개 예시 두 파일을 사용해 새 결과 이름을 만든다.
 
 ```powershell
+$exampleReport = "evals/transcription/results/example-report-$([guid]::NewGuid().ToString('N')).json"
 .\.venv\Scripts\python.exe -m app.evals.transcription_cli `
   --manifest evals/transcription/manifest.example.json `
   --run evals/transcription/run.example.json `
-  --output evals/transcription/results/example-report.json
+  --output $exampleReport
 ```
 
-`--output`을 생략하면 JSON 성적표를 표준 출력에 표시한다. 성적표에는 다음이 포함된다.
+`--output`을 생략하면 JSON 성적표를 표준 출력에 표시하므로 비공개 자료에는
+생략하지 않는다. 성적표에는 다음이 포함된다.
 
 - 전체 micro WER와 단어 오류 수
 - 필러와 연속 반복어의 보존율·정밀도
@@ -174,17 +194,18 @@ docker run --rm --network none --mount "type=bind,source=$evalDir,target=/evals"
 순위로 바꾸지 않는다.
 
 ```powershell
+$evaluationRunId = "example-evaluation-$([guid]::NewGuid().ToString('N'))"
 .\.venv\Scripts\python.exe -m app.stt_benchmark evaluate-engines `
   --manifest evals/transcription/manifest.example.json `
   --run evals/transcription/run.example.json `
   --output-dir evals/transcription/results `
-  --evaluation-run-id example-evaluation-001 `
+  --evaluation-run-id $evaluationRunId `
   --evaluators custom,jiwer `
   --max-concurrency 2
 ```
 
-결과는 `results/example-evaluation-001/index.json`과
-`results/example-evaluation-001/raw/<sample-id>/<evaluator-id>.*`에 저장된다. 기존 폴더를
+결과는 `results/<evaluationRunId>/index.json`과
+`results/<evaluationRunId>/raw/<sample-id>/<evaluator-id>.*`에 저장된다. 기존 폴더를
 덮어쓰지 않으므로 재평가에는 새 실행 ID를 쓴다. Nyra·SCTK·HF Evaluate·MeetEval의
 설치 상태와 supplements 입력은
 [`멀티 엔진 평가 문서`](../../../docs/ai/stt-multi-engine-evaluation.md)를 확인한다.

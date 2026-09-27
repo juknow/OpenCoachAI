@@ -34,9 +34,12 @@ STT 모델이나 prompt를 바꾼 뒤 전사문 몇 개를 눈으로 보는 것�
 }
 ```
 
-`referenceTranscript`는 두 사람이 원본 음성을 독립적으로 듣고 합의한 완전한
-단어열이다. 전체 verbatim Gold는 별도 비공개 파일에 조각·사건과 함께 보존하고,
-`referenceTranscript`는 현재 채점용으로 추출한 표현이다. 합의되지 않은 발화는
+확정 평가 세트의 `referenceTranscript`는 두 사람이 원본 음성을 독립적으로 듣고
+합의한 완전한 단어열을 목표로 한다. 전체 verbatim Gold를 별도 비공개 파일에
+조각·사건과 함께 보존하고, 그중 현재 채점 가능한 표현을 `referenceTranscript`로
+추출하는 것이 목표 절차다. 현재 park·travel 로컬 파일럿은 `single-reviewed`이며
+사건·시간 주석의 원음 검수를 마치지 않았다. 이 자료의 수치를 확정 Gold에 근거한
+모델 품질 판정으로 해석하지 않는다. 합의되지 않은 발화는
 보류하고, 조각·단어 내부 중단·혼용 언어·복수 화자 자료는 수동 도전 자료로 분리한다.
 분리한 자료의 수와 이유도 보고한다. 이 분류는 현재 CLI가 자동으로 적용하지 않는다.
 주 단어 평가에서도 필러·완전 반복·false start의 완전한 단어·문법 오류는 삭제하지 않는다.
@@ -309,7 +312,7 @@ python -m app.stt_benchmark transcribe --manifest <manifest.json> --output <resu
 
 아직 구현하지 않은 항목:
 
-- 동의받은 실제 비원어민 평가 음성 세트
+- 여러 화자와 독립 검수 Gold를 갖춘 확정 비원어민 평가 세트
 - OpenAI 등 다른 STT 공급자의 실제 실행 adapter와 설정 비교 게이트
 - fragment·위치 기반 filler·false start·pause 자동 Custom 지표
 - PostgreSQL 공동 저장소, 연구 API, 작업 worker와 Docker 배포 구성

@@ -79,7 +79,9 @@ python -m compileall app
 **현재 구현:** 기본 `TRANSCRIPTION_PROVIDER=openai`는 기존 전사 경로를 유지한다.
 `TRANSCRIPTION_PROVIDER=local_whisper`를 명시하면 전사 API만 로컬 Whisper를 사용한다.
 평가 LLM은 여전히 OpenAI다. 로컬 모델은 CPU `int8`로 실행하며 기본 후보는
-`small.en`이다. 이 모델의 OPIc 원문 보존 품질은 아직 평가되지 않았다.
+`small.en`이다. park·travel 두 음성으로 예비 평가는 실행했지만 Gold는 한 사람 검수
+상태이므로 OPIc 원문 보존 품질이 검증됐다고 볼 수 없다. 자료 상태와 실행법은
+[`STT 평가 자료 안내`](evals/transcription/README.md)를 따른다.
 
 저장소 루트에서 이미지와 재사용할 모델 캐시를 준비한다. 모델 다운로드는 이 명령에서
 명시적으로 한 번 실행하며, 평가 음성이나 API 키는 필요하지 않다.
