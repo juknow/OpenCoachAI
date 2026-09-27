@@ -62,6 +62,7 @@ docs/
 | `ai/stt-multi-engine-evaluation.md` | 현재 구현 | 여러 독립 평가기의 선택·병렬 실행, native 결과 저장, 설치 한계 |
 | `decisions/0001-gold-transcript-and-timing.md` | 재검토안 | Gold 원본과 현재 채점 범위를 분리한 이유·대안·검증 조건 |
 | `decisions/0002-independent-stt-evaluators.md` | 승인된 구현 | 평가기 결과를 합치지 않고 독립 보존하는 이유 |
+| `decisions/0003-stt-evaluation-artifact-retention.md` | 검토안 | 비공개 음성·Gold·모델 원본·채점 이력의 보존 분류와 정리 전 승인 절차. 기간·삭제는 미승인 |
 
 ## 문서 관리 규칙
 
