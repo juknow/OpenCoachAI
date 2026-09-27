@@ -33,7 +33,7 @@ def evaluate_transcription_run(
     speech_scores = [score for score in sample_scores if score.expected_behavior == "transcribe"]
     reference_words = sum(score.reference_words for score in speech_scores)
     word_errors = sum(score.word_errors for score in speech_scores)
-    latencies = [score.latency_ms for score in sample_scores]
+    latencies = [score.latency_ms for score in sample_scores if score.latency_ms is not None]
 
     return TranscriptionEvaluationReport(
         experiment_id=run.experiment_id,
@@ -54,8 +54,8 @@ def evaluate_transcription_run(
         non_speech_samples=len(sample_scores) - len(speech_scores),
         hallucination_samples=sum(score.hallucinated_words > 0 for score in sample_scores),
         unexpected_outcome_samples=sum(score.unexpected_outcome for score in sample_scores),
-        latency_p50_ms=_nearest_rank_percentile(latencies, 50),
-        latency_p95_ms=_nearest_rank_percentile(latencies, 95),
+        latency_p50_ms=_nearest_rank_percentile(latencies, 50) if latencies else None,
+        latency_p95_ms=_nearest_rank_percentile(latencies, 95) if latencies else None,
         samples=sample_scores,
     )
 

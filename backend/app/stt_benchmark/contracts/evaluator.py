@@ -83,7 +83,7 @@ class EvaluatorInput(ApiModel):
     observed_status: Literal["transcribed", "rejected", "failed"]
     language: Literal["en"]
     duration_seconds: float = Field(ge=0, le=120.5)
-    latency_ms: int = Field(ge=0)
+    latency_ms: int | None = Field(default=None, ge=0)
     error_code: str | None = None
     model: str
     prompt_version: str

@@ -37,6 +37,7 @@
 | `evaluator_inputs.py` | 기존 manifest/run JSON을 불변 평가 입력으로 변환 |
 | `storage/artifacts.py` | 덮어쓰지 않는 평가 실행 폴더와 원본 결과 저장 |
 | `interfaces/cli/evaluate_engines.py` | 파일 기반 사용자 명령 |
+| `openai_response_import.py`와 `interfaces/cli/import_openai.py` | 이미 저장된 OpenAI JSON을 원본 보존형 run으로 가져오기 |
 
 모든 평가기는 다음 정보를 제공한다.
 
@@ -172,6 +173,13 @@ cd backend
 
 같은 Prediction을 재평가할 때는 새 `--evaluation-run-id`를 사용한다. 기존 폴더를
 덮어쓰지 않으며 같은 ID가 이미 있으면 실패한다.
+
+이미 받은 `gpt-transcribe` 응답을 가져오는 명령과 park·travel의 비공개 폴더 배치는
+[`평가 자료 README`](../../backend/evals/transcription/README.md)에 있다. API 응답
+자체에는 요청 모델·프롬프트·지연 시간·타임스탬프가 없을 수 있다. 가져오기 명령의
+모델명과 프롬프트 버전은 호출 기록을 확인해 사용자가 제공하는 값이며, 누락된
+지연 시간은 `null`로 남긴다. 이 값이 없어도 Custom/JiWER 등 텍스트 평가기는
+실행할 수 있지만 시간 지표를 임의로 생성하지 않는다.
 
 ## 7. 저장 결과
 

@@ -14,6 +14,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         help="Run independent evaluators and preserve their native outputs.",
     )
     subparsers.add_parser("transcribe", add_help=False, help="Validate or execute local STT.")
+    subparsers.add_parser(
+        "import-openai", add_help=False, help="Import saved OpenAI transcription JSON."
+    )
     arguments, remaining = parser.parse_known_args(argv)
     if arguments.command == "evaluate":
         from app.stt_benchmark.interfaces.cli.evaluate import main as evaluate
@@ -23,6 +26,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         from app.stt_benchmark.interfaces.cli.evaluate_engines import main as evaluate_engines
 
         return evaluate_engines(remaining)
+    if arguments.command == "import-openai":
+        from app.stt_benchmark.interfaces.cli.import_openai import main as import_openai
+
+        return import_openai(remaining)
     from app.stt_benchmark.interfaces.cli.transcribe import main as transcribe
 
     return transcribe(remaining)

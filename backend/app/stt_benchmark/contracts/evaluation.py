@@ -27,7 +27,7 @@ class TranscriptionSampleScore(ApiModel):
     repetition: AggregateRetention
     hallucinated_words: int = Field(ge=0)
     unexpected_outcome: bool
-    latency_ms: int = Field(ge=0)
+    latency_ms: int | None = Field(default=None, ge=0)
     error_code: str | None = None
 
 
@@ -47,6 +47,6 @@ class TranscriptionEvaluationReport(ApiModel):
     non_speech_samples: int = Field(ge=0)
     hallucination_samples: int = Field(ge=0)
     unexpected_outcome_samples: int = Field(ge=0)
-    latency_p50_ms: int = Field(ge=0)
-    latency_p95_ms: int = Field(ge=0)
+    latency_p50_ms: int | None = Field(default=None, ge=0)
+    latency_p95_ms: int | None = Field(default=None, ge=0)
     samples: list[TranscriptionSampleScore]

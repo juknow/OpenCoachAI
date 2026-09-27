@@ -13,7 +13,10 @@ transcription/
 ├─ manifest.local.json     로컬 실제 목록, Git에서 제외
 ├─ supplements.local.json  intended·화자·시간 정보, Git에서 제외
 ├─ samples/                평가 음성, Git에서 제외
-└─ results/                모델 전사 결과, Git에서 제외
+└─ results/                모델 전사·평가기 원본 결과, Git에서 제외
+   └─ predictions/<experiment-id>/
+      ├─ raw/              provider가 반환한 JSON 원본
+      └─ run.json          평가기에 넣을 기존 run 계약
 ```
 
 ## 시작 방법
@@ -53,6 +56,51 @@ print("Manifest schema valid.")
 ```
 
 ## 저장된 실행 결과 평가하기
+
+### 이미 받은 OpenAI 응답 가져오기
+
+**현재 구현:** `import-openai`는 이미 저장한 JSON 응답의 `text`만 기존 run의
+`transcript`로 복사한다. 원본 JSON은 바꾸지 않고 `rawResponsePath`와 원본 바이트
+SHA-256을 남긴다. OpenAI API를 다시 호출하지 않는다. `createdAt`은 **가져온 시각**이지
+원래 API 호출 시각이 아니다. 응답에 없는 모델명·요청 프롬프트·호출 지연 시간·단어
+타임스탬프를 추정하지 않는다. `latencyMs`는 `null`이고, 지연 시간 백분위도 알려진
+샘플이 없다면 `null`이다. 원본 `usage`의 duration seconds는 토큰 사용량이나
+실측 음성 길이로 바꾸지 않고 원본 JSON에만 보존한다.
+
+park·travel의 현재 비공개 배치는 다음처럼 둔다. `manifest.local.json`의 Gold는
+수정하지 않는다. 모델 출력은 Gold의 후보나 대조 자료일 뿐 검수된 정답이 아니다.
+
+```text
+samples/junho-opic-park-001.m4a
+samples/junho-opic-travel-001.m4a
+manifest.local.json                         기존 단독 검수 Gold
+results/predictions/openai-gpt-transcribe-001/
+├─ raw/junho-opic-park-001.json            API 응답 원본
+├─ raw/junho-opic-travel-001.json          API 응답 원본
+└─ run.json                                평가용 모델 답안
+```
+
+`backend/`에서 다음처럼 가져온다. 모든 manifest 샘플에 대해 응답을 지정하고,
+모델명과 요청 설정은 **원본 응답에 없으므로** 실제 호출 기록을 확인한 뒤 기입한다.
+프롬프트 SHA-256을 검증할 수 있으면 `--prompt-sha256 SAMPLE_ID=SHA256`을 추가한다.
+없다면 값을 만들지 말고 비워 둔다. 원본·run 파일은 Git에서 제외되며 출력 파일이
+이미 있으면 덮어쓰지 않는다.
+
+```powershell
+.\.venv\Scripts\python.exe -m app.stt_benchmark import-openai `
+  --manifest evals/transcription/manifest.local.json `
+  --response "junho-opic-park-001=evals/transcription/results/predictions/openai-gpt-transcribe-001/raw/junho-opic-park-001.json" `
+  --response "junho-opic-travel-001=evals/transcription/results/predictions/openai-gpt-transcribe-001/raw/junho-opic-travel-001.json" `
+  --output evals/transcription/results/predictions/openai-gpt-transcribe-001/run.json `
+  --experiment-id openai-gpt-transcribe-001 `
+  --model gpt-transcribe `
+  --prompt-version manual-mixed-v1
+```
+
+park 호출에는 프롬프트가 없고 travel 호출에는 verbatim 프롬프트가 있었다. 따라서
+`manual-mixed-v1`은 **샘플마다 설정이 달랐다는 기록**이며, 이 배치만으로 공정한
+모델 우열을 판정하면 안 된다. 같은 Gold와 Prediction으로 오케스트레이터를 돌리려면
+아래의 `evaluate-engines` 명령에서 `--run`을 위 `run.json`으로 지정한다.
 
 ### 로컬 Whisper로 실행 결과 만들기
 

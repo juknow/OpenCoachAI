@@ -21,7 +21,7 @@ class TranscriptionObservation(ApiModel):
     sample_id: str = Field(pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
     status: Literal["transcribed", "rejected", "failed"]
     transcript: str = Field(default="", max_length=20_000)
-    latency_ms: int = Field(ge=0)
+    latency_ms: int | None = Field(default=None, ge=0)
     error_code: str | None = Field(
         default=None,
         pattern=r"^[A-Z][A-Z0-9_]*$",
@@ -29,9 +29,14 @@ class TranscriptionObservation(ApiModel):
     )
     usage: UsageMetadata | None = None
     audio_seconds: float | None = Field(default=None, ge=0)
+    raw_response_path: str | None = None
+    raw_response_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    prompt_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
 
     @model_validator(mode="after")
     def validate_status_payload(self) -> Self:
+        if (self.raw_response_path is None) != (self.raw_response_sha256 is None):
+            raise ValueError("raw response path and SHA-256 must be supplied together")
         if self.status == "transcribed" and self.error_code is not None:
             raise ValueError("transcribed observations cannot have an error code")
         if self.status != "transcribed":
