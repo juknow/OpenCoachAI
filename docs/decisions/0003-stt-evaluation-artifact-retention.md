@@ -1,6 +1,6 @@
 # ADR 0003: STT 평가 산출물을 출처별로 보존하고 정리는 검증 후 승인한다
 
-- 상태: 검토안 — 실제 이동·삭제와 보존 기간은 미승인
+- 상태: 검토안 — 개인 평가 자료의 이동·삭제와 보존 기간은 미승인. 공개 예시 생성 출력만 별도 승인으로 정리
 - 날짜: 2026-09-27
 
 ## 문제와 현재 사실
@@ -26,7 +26,7 @@ Git 커밋이나 이미지 재빌드만으로 이 자료를 복원할 수 없다
 | 모델 출력 원본 | `results/predictions/*/raw/`, `results/small-en-001.json` | 재호출은 비용·모델 변경·비결정성 때문에 같은 답안을 보장하지 않으므로 원본 보존. |
 | 평가 입력 사본 | `results/predictions/*/run.json` | 원본 응답과 별개로 평가기가 사용한 정확한 Prediction을 고정한다. 원본 경로·해시를 확인한 뒤 보존. |
 | 채점 이력 | `results/<evaluation-run-id>/index.json`과 각 `raw/`, `results/small-en-001-report.json` | 점수 파일이 같아도 실행 조건과 검수 상태가 다를 수 있다. 인용하거나 재현 근거로 사용한 실행은 보존. |
-| 공개 예시의 생성 출력 | `results/example-report.json`, `results/example-evaluation-001/` | 공개 예시 입력으로 다시 만들 수 있지만, 현재 로컬 출력은 자동 삭제하지 않는다. 참조·백업을 확인한 뒤 별도 정리 후보로만 표시. |
+| 공개 예시의 생성 출력 | `results/example-report.json`, `results/example-evaluation-001/` | 2026-09-27 사용자 승인으로 이 두 로컬 출력만 삭제했다. 추적 중인 공개 예시 입력으로 기능상 다시 만들 수 있으나 실행 시각 등의 메타데이터까지 동일하지는 않다. |
 
 현재의 `small-en-evaluation-001/`, `small-en-evaluation-002/`,
 `small-en-provenance-001/`, `small-en-single-reviewed-001/`,

@@ -145,11 +145,12 @@ Windows에서는 MeetEval 항목이 환경 marker로 건너뛰어진다. SCTK와
 
 ```powershell
 cd backend
+$evaluationRunId = "example-evaluation-$([guid]::NewGuid().ToString('N'))"
 .\.venv\Scripts\python.exe -m app.stt_benchmark evaluate-engines `
   --manifest evals/transcription/manifest.example.json `
   --run evals/transcription/run.example.json `
   --output-dir evals/transcription/results `
-  --evaluation-run-id example-evaluation-001 `
+  --evaluation-run-id $evaluationRunId `
   --evaluators custom,jiwer `
   --max-concurrency 2
 ```
