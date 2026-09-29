@@ -1,7 +1,8 @@
 # ADR 0003: STT 평가 산출물을 출처별로 보존하고 정리는 검증 후 승인한다
 
-- 상태: 검토안 — 개인 평가 자료의 이동·삭제와 보존 기간은 미승인. 공개 예시 생성 출력만 별도 승인으로 정리
+- 상태: 평가 실행 폴더 6개의 위치 이동 승인·실행. 그 밖의 자료 삭제와 보존 기간은 미승인
 - 날짜: 2026-09-27
+- 갱신: 2026-09-29
 
 ## 문제와 현재 사실
 
@@ -10,7 +11,7 @@
 supplements는 Git에서 제외되고, 제품 Docker 이미지에도 들어가지 않는다. 따라서
 Git 커밋이나 이미지 재빌드만으로 이 자료를 복원할 수 없다.
 
-현재 `results/`에는 계산 원본이 같은 로컬 Whisper 평가 실행 폴더가 다섯 개 있지만,
+현재 `results/evaluations/`에는 계산 원본이 같은 로컬 Whisper 평가 실행 폴더가 다섯 개 있지만,
 색인의 스키마 버전·Gold 검수 표기·최대 동시 실행 수가 서로 다르다. 바이트가 같은
 점수 파일만 보고 실행 폴더 전체를 중복으로 판정하면 실험 이력을 잃는다.
 
@@ -25,10 +26,10 @@ Git 커밋이나 이미지 재빌드만으로 이 자료를 복원할 수 없다
 | 원본·검수 근거 | `samples/`, `manifest.local.json`, `supplements.local.json`, `results/gold-event-candidates-001.json`, `results/gold-review-pending-001.json` | 다른 파일에서 안전하게 복원할 수 없으므로 임의 삭제·덮어쓰기 금지. Gold 개정 시 과거판을 별도 보존하는 절차가 필요하며 현재 자동 버전 관리는 없다. |
 | 모델 출력 원본 | `results/predictions/*/raw/`, `results/small-en-001.json` | 재호출은 비용·모델 변경·비결정성 때문에 같은 답안을 보장하지 않으므로 원본 보존. |
 | 평가 입력 사본 | `results/predictions/*/run.json` | 원본 응답과 별개로 평가기가 사용한 정확한 Prediction을 고정한다. 원본 경로·해시를 확인한 뒤 보존. |
-| 채점 이력 | `results/<evaluation-run-id>/index.json`과 각 `raw/`, `results/small-en-001-report.json` | 점수 파일이 같아도 실행 조건과 검수 상태가 다를 수 있다. 인용하거나 재현 근거로 사용한 실행은 보존. |
+| 채점 이력 | `results/evaluations/<evaluation-run-id>/index.json`과 각 `raw/`, `results/small-en-001-report.json` | 점수 파일이 같아도 실행 조건과 검수 상태가 다를 수 있다. 인용하거나 재현 근거로 사용한 실행은 보존. |
 | 공개 예시의 생성 출력 | `results/example-report.json`, `results/example-evaluation-001/` | 2026-09-27 사용자 승인으로 이 두 로컬 출력만 삭제했다. 추적 중인 공개 예시 입력으로 기능상 다시 만들 수 있으나 실행 시각 등의 메타데이터까지 동일하지는 않다. |
 
-현재의 `small-en-evaluation-001/`, `small-en-evaluation-002/`,
+현재 `results/evaluations/`에 있는 `small-en-evaluation-001/`, `small-en-evaluation-002/`,
 `small-en-provenance-001/`, `small-en-single-reviewed-001/`,
 `small-en-single-reviewed-002/`는 각각 별도의 실행 기록이다. 원본 결과 파일 네 개씩은
 현재 바이트가 같지만 v1/v2 색인, Gold 검수 상태, 동시성 설정에 차이가 있다.
@@ -63,13 +64,14 @@ Git 커밋이나 이미지 재빌드만으로 이 자료를 복원할 수 없다
 
 폴더를 단순히 `archive/`로 이동하는 방법도 검토했다. 화면상 복잡함은 줄지만
 보존 기간이나 접근 제어 문제는 해결하지 않고 기존 경로를 참조하는 명령도 바뀐다.
-이번 단계에서는 이동하지 않는다. PostgreSQL이나 새 서버를 도입하는 것도 현재
-로컬 자료의 보존 책임을 대신 해결하지 못하므로 범위 밖이다.
+이번에 승인된 평가 실행 폴더 여섯 개는 보관용 `archive/`가 아닌
+`results/evaluations/`로만 이동한다. PostgreSQL이나 새 서버를 도입하는 것도
+현재 로컬 자료의 보존 책임을 대신 해결하지 못하므로 범위 밖이다.
 
 ## 영향·한계·재검토 조건
 
-- 이 ADR은 분류와 승인 절차의 **제안**이며 파일을 이동·삭제하거나 보존 기간을
-  자동 설정하는 구현이 아니다.
+- 평가 실행 폴더 여섯 개의 위치만 바뀐다. 다른 파일의 삭제나 보존 기간을
+  자동 설정하는 구현은 아니다.
 - 저장소만 조사했으므로 저장소 밖의 동의 문서·백업·접근 권한은 확인되지 않았다.
 - 협업 서버로 자료를 옮기거나, 보존 만료일·삭제 요청이 생기거나, 자료가 커져
   실제 정리가 필요해지면 동의 조건과 복구 수단을 확인한 뒤 이 결정을 갱신한다.

@@ -170,7 +170,7 @@ Windows에서는 MeetEval 항목이 환경 marker로 건너뛰어진다. SCTK와
 ## 7. 저장 결과
 
 ```text
-results/<evaluation-run-id>/
+results/evaluations/<evaluation-run-id>/
 ├─ index.json
 └─ raw/
    └─ <sample-id>/

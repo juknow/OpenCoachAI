@@ -204,14 +204,14 @@ $evaluationRunId = "example-evaluation-$([guid]::NewGuid().ToString('N'))"
 .\.venv\Scripts\python.exe -m app.stt_benchmark evaluate-engines `
   --manifest evals/transcription/manifest.example.json `
   --run evals/transcription/run.example.json `
-  --output-dir evals/transcription/results `
+  --output-dir evals/transcription/results/evaluations `
   --evaluation-run-id $evaluationRunId `
   --evaluators custom,jiwer `
   --max-concurrency 2
 ```
 
-결과는 `results/<evaluationRunId>/index.json`과
-`results/<evaluationRunId>/raw/<sample-id>/<evaluator-id>.*`에 저장된다. 기존 폴더를
+결과는 `results/evaluations/<evaluationRunId>/index.json`과
+`results/evaluations/<evaluationRunId>/raw/<sample-id>/<evaluator-id>.*`에 저장된다. 기존 폴더를
 덮어쓰지 않으므로 재평가에는 새 실행 ID를 쓴다. Nyra·SCTK·HF Evaluate·MeetEval의
 설치 상태와 supplements 입력은
 [`멀티 엔진 평가 문서`](../../../docs/ai/stt-multi-engine-evaluation.md)를 확인한다.
