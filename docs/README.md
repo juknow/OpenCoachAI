@@ -56,6 +56,7 @@ docs/
 | `architecture/transcription-pipeline.md` | 현재 구현과 목표 | 녹음부터 전사 확인까지의 상세 흐름과 개선 기준 |
 | `frontend/audio-recording.md` | 현재 구현 | 브라우저 녹음 상태와 로컬 음성 지표 |
 | `backend/transcription-api.md` | 현재 구현 | 전사 API 계약, 검증, provider, 오류 |
+| `backend/shared-idempotency.md` | 배포 전 검토 조건 | 여러 백엔드 인스턴스에서 평가 결과 캐시를 공유하기 위한 계약과 검증 조건 |
 | `ai/stt-domain-guide.md` | 도메인 안내 | OPIc 전사에 필요한 STT 기초와 설계 원칙 |
 | `ai/gold-transcript-guide.md` | 검토용 규범안 | `gold-v1-rc1`: 전체 verbatim 보존, 표기·독립 검수·시간 주석. 실제 음성 파일럿 전 |
 | `ai/stt-evaluation.md` | 구현 중 | 모델과 prompt를 비교할 평가 방법과 현재 도구 상태 |

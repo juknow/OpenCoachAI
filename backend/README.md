@@ -48,7 +48,7 @@ records that already contain both answers remain readable and do not call the la
 endpoint again.
 
 The result cache is process-local. Before running more than one backend instance,
-follow [shared-idempotency.md](docs/shared-idempotency.md); do not scale horizontally
+follow [shared-idempotency.md](../docs/backend/shared-idempotency.md); do not scale horizontally
 until a shared implementation has passed the same cache and privacy contract tests.
 
 Tests use fake providers and do not incur API charges or download Whisper models:
