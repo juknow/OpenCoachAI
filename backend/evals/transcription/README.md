@@ -3,6 +3,12 @@
 이 폴더는 운영 기능이 아니라 STT 모델과 prompt를 같은 조건으로 비교하기 위한
 오프라인 시험 공간이다.
 
+이 문서는 평가 자료의 위치·현재 검수 상태와 **실행 명령**을 안내한다. 지표의 의미는
+[`STT 품질 평가 방법`](../../../docs/ai/stt-evaluation.md), 평가기별 입력 조건·설치와
+결과 형식은 [`멀티 엔진 평가 문서`](../../../docs/ai/stt-multi-engine-evaluation.md)를 따른다.
+새 명령의 진입점은 `python -m app.stt_benchmark`다. `app.evals.transcription_*`는
+기존 사용자를 위해 유지하는 호환 경로다.
+
 ## 파일 구조
 
 ```text
@@ -48,7 +54,7 @@ JSON 형식 검사만으로 Gold의 내용이나 실제 녹음과의 일치가 �
 ```powershell
 @'
 from pathlib import Path
-from app.evals.transcription_dataset import TranscriptionDataset
+from app.stt_benchmark.contracts.dataset import TranscriptionDataset
 
 try:
     TranscriptionDataset.model_validate_json(
@@ -133,7 +139,7 @@ $evalDir = (Resolve-Path -LiteralPath .\backend\evals\transcription).Path
 New-Item -ItemType Directory -Force .\backend\evals\transcription\results | Out-Null
 $runId = "small-en-$([guid]::NewGuid().ToString('N'))"
 $runOutput = "/evals/results/$runId.json"
-docker run --rm --network none --mount "type=bind,source=$evalDir,target=/evals" --entrypoint python opencoachai-backend:local-whisper -m app.evals.transcription_execute_cli --manifest /evals/manifest.local.json --output $runOutput --experiment-id $runId
+docker run --rm --network none --mount "type=bind,source=$evalDir,target=/evals" --entrypoint python opencoachai-backend:local-whisper -m app.stt_benchmark transcribe --manifest /evals/manifest.local.json --output $runOutput --experiment-id $runId
 ```
 
 마지막 명령에 `--execute-live`를 덧붙이면 실제 전사를 실행한다. 같은 이름의 결과를
@@ -141,7 +147,7 @@ docker run --rm --network none --mount "type=bind,source=$evalDir,target=/evals"
 같은 `$runId`를 재사용한다. 다음 반복 측정에는 새 `$runId`를 만든다.
 
 ```powershell
-docker run --rm --network none --mount "type=bind,source=$evalDir,target=/evals" --mount source=opencoachai-whisper-cache,target=/home/appuser/.cache/huggingface --entrypoint python opencoachai-backend:local-whisper -m app.evals.transcription_execute_cli --manifest /evals/manifest.local.json --output $runOutput --experiment-id $runId --execute-live
+docker run --rm --network none --mount "type=bind,source=$evalDir,target=/evals" --mount source=opencoachai-whisper-cache,target=/home/appuser/.cache/huggingface --entrypoint python opencoachai-backend:local-whisper -m app.stt_benchmark transcribe --manifest /evals/manifest.local.json --output $runOutput --experiment-id $runId --execute-live
 ```
 
 다른 컴퓨터에서는 저장소 코드와 별도로 `manifest.local.json`, `samples/`, `results/`를
@@ -152,7 +158,7 @@ docker run --rm --network none --mount "type=bind,source=$evalDir,target=/evals"
 
 ```powershell
 $reportOutput = "/evals/results/$runId-report.json"
-docker run --rm --network none --mount "type=bind,source=$evalDir,target=/evals" --entrypoint python opencoachai-backend:local-whisper -m app.evals.transcription_cli --manifest /evals/manifest.local.json --run $runOutput --output $reportOutput
+docker run --rm --network none --mount "type=bind,source=$evalDir,target=/evals" --entrypoint python opencoachai-backend:local-whisper -m app.stt_benchmark evaluate --manifest /evals/manifest.local.json --run $runOutput --output $reportOutput
 ```
 
 기존 단일 성적표 명령은 출력 경로가 이미 있으면 **덮어쓴다**. 과거 성적표를
@@ -170,7 +176,7 @@ docker run --rm --network none --mount "type=bind,source=$evalDir,target=/evals"
 
 ```powershell
 $exampleReport = "evals/transcription/results/example-report-$([guid]::NewGuid().ToString('N')).json"
-.\.venv\Scripts\python.exe -m app.evals.transcription_cli `
+.\.venv\Scripts\python.exe -m app.stt_benchmark evaluate `
   --manifest evals/transcription/manifest.example.json `
   --run evals/transcription/run.example.json `
   --output $exampleReport
@@ -222,12 +228,11 @@ Git과 제품 Docker 이미지에 들어가지 않는다. 이 폴더의 파일�
 음성·Gold·검수 작업지와 모델 원본 응답은 원천 자료다. `run.json`은 평가에 사용한
 Prediction을, 평가 폴더의 `index.json`과 `raw/`는 그 실행 조건과 평가기 원본
 출력을 보존한다. 점수 파일의 내용이 같아도 색인의 버전·검수 상태·설정이 다르면
-실행 이력을 합치거나 삭제하지 않는다. 공개 예시로 만든 출력만 재생성 가능한
-정리 후보로 분류하되, 참조와 백업을 확인하기 전에는 자동 삭제하지 않는다.
+실행 이력을 합치거나 삭제하지 않는다. 기존 공개 예시 출력 두 경로의 정리 이력과
+나머지 로컬 산출물의 보존 판단은 아래 ADR에 기록되어 있다.
 
-정확한 파일별 분류, 동의·보존 기간 확인, 백업·복구 검증, 별도 삭제 승인 절차는
+파일별 보존 분류와 이전 공개 예시 출력의 정리 기록은
 [`ADR 0003`](../../../docs/decisions/0003-stt-evaluation-artifact-retention.md)에 있다.
-이 문서를 작성하면서 기존 로컬 파일을 이동하거나 삭제하지 않았다.
 
 ## source 값
 

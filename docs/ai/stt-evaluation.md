@@ -1,5 +1,9 @@
 # STT 품질 평가 방법
 
+이 문서는 Gold 작성·지표 해석·실험 판단 기준을 설명한다. 실제 자료 배치와 실행 명령은
+[`평가 자료 README`](../../backend/evals/transcription/README.md), 평가기별 지원 입력과
+원본 결과 형식은 [`멀티 엔진 평가 문서`](stt-multi-engine-evaluation.md)를 따른다.
+
 ## 1. 왜 시험지가 먼저 필요한가
 
 STT 모델이나 prompt를 바꾼 뒤 전사문 몇 개를 눈으로 보는 것만으로는 개선 여부를
@@ -203,7 +207,9 @@ WER = (대체한 단어 + 빠뜨린 단어 + 추가한 단어) / 정답 단어 �
 
 ## 9. 실험 기록 형식
 
-각 실행은 다음 정보를 남긴다.
+다음은 실험 기록에서 구분해야 할 정보를 보여주는 **개념 예시**다. 현재 CLI의 JSON
+스키마나 자동 비용 계산 결과가 아니다. 실제 필드와 결과 파일은 평가 자료 README와
+멀티 엔진 평가 문서를 따른다.
 
 ```json
 {
@@ -233,7 +239,7 @@ WER = (대체한 단어 + 빠뜨린 단어 + 추가한 단어) / 정답 단어 �
 
 새 설정은 평균 WER 하나만 좋아졌다고 채택하지 않는다.
 
-필수 gate:
+모델 채택 전에 검토할 기준(현재 자동 게이트로 구현되지는 않음):
 
 - 비음성 환각률이 악화되지 않음
 - 필러 보존율이 악화되지 않음
@@ -255,62 +261,15 @@ WER = (대체한 단어 + 빠뜨린 단어 + 추가한 단어) / 정답 단어 �
 같은 화자의 비슷한 문장이 여러 묶음에 들어가면 실제보다 성능이 좋아 보일 수 있다.
 가능하면 화자 단위로 분리한다.
 
-## 12. 첫 번째 평가 도구 구현 순서
+## 12. 현재 측정 범위와 한계
 
-1. 민감 정보가 없는 sample manifest schema를 정의한다.
-2. 정답 전사문 정규화 규칙에 단위 테스트를 추가한다.
-3. 단어 정렬과 WER 계산기를 구현한다.
-4. 필러와 반복 보존 지표를 구현한다.
-5. 무음·비음성 결과 판정을 구현한다.
-6. provider 설정별 실행 adapter를 구현한다.
-7. latency와 usage를 수집한다.
-8. JSON 결과와 사람이 읽는 Markdown 요약을 생성한다.
-9. CI에서는 비용 없는 고정 결과 fixture로 계산기만 테스트한다.
-10. 실제 외부 API 평가는 명시적으로 실행하는 별도 명령으로 둔다.
+현재 자체 평가기는 WER, 필러의 종류별 개수 보존, 바로 이어진 반복 단어의 개수 보존,
+비음성 입력의 생성 단어 수를 계산한다. `evaluation_engine.py`는 기존 단일 성적표를
+만들고, `evaluation_orchestrator.py`는 독립 평가기의 결과를 각각 저장한다. 두 경로의
+점수를 하나의 종합 점수로 합치지 않는다. 구현 파일별 책임과 실행 조건은 멀티 엔진
+평가 문서에, 실행 명령은 평가 자료 README에 있다.
 
-## 13. 완료 조건
-
-- 같은 dataset과 설정으로 결과를 다시 만들 수 있다.
-- metric 계산이 자동 테스트로 검증된다.
-- 모델과 prompt 변경 PR에 이전/이후 비교표가 포함된다.
-- 음성과 전사문이 일반 애플리케이션 로그에 노출되지 않는다.
-- 품질, latency, 비용 중 어느 하나를 숨기고 “개선”이라고 표현하지 않는다.
-
-## 14. 현재 구현 상태
-
-현재 저장소에는 다음 오프라인 평가 기반이 구현되어 있다. 중심 파일은
-`backend/app/stt_benchmark/evaluation_engine.py`다. 이 파일은 모델을 호출하거나
-JSON을 읽지 않고 전달받은 데이터셋과 실행 결과만 채점한다.
-
-- `backend/app/stt_benchmark/contracts/`: 평가 manifest·실행 결과·성적표 계약
-- `backend/app/stt_benchmark/metrics/`: WER, 필러, 연속 반복어, 비음성 단어 계산
-- `backend/app/stt_benchmark/evaluation_engine.py`: sample별 계산과 전체 성적표 조정
-- `backend/app/stt_benchmark/transcription_runner.py`: 주입받은 STT provider로 평가 음성 실행
-- `backend/app/stt_benchmark/interfaces/cli/`: JSON 입출력과 명령행 인자 처리
-- `backend/app/stt_benchmark/evaluation_orchestrator.py`: 여러 독립 평가기의 병렬 실행과
-  실패 격리
-- `backend/app/stt_benchmark/evaluators/`: Custom, JiWER, Nyra, SCTK, HF Evaluate,
-  MeetEval adapter
-- `backend/app/stt_benchmark/storage/`: 평가기별 native 결과와 최소 실행 인덱스 저장
-- `backend/app/evals/transcription_*.py`: 기존 import와 실행 명령을 위한 호환 경로
-- `backend/evals/transcription/`: 공개 예시와 로컬 자료 배치 안내
-- `docs/ai/gold-transcript-guide.md`: Gold 작성·검수 규범안 (`gold-v1-rc1`, 파일럿 전)
-
-새 통합 명령은 아래처럼 실행한다. 기존 `app.evals.transcription_cli`와
-`app.evals.transcription_execute_cli` 명령도 같은 구현으로 계속 동작한다.
-
-```powershell
-python -m app.stt_benchmark evaluate --manifest <manifest.json> --run <run.json>
-python -m app.stt_benchmark evaluate-engines --manifest <manifest.json> --run <run.json> --output-dir <results-dir> --evaluation-run-id <id> --evaluators custom,jiwer
-python -m app.stt_benchmark transcribe --manifest <manifest.json> --output <results/run.json> --experiment-id <id>
-```
-
-`evaluate`는 기존 통합 성적표 의미와 호환성을 유지한다. `evaluate-engines`는 평가기끼리
-결과를 합치거나 순위를 만들지 않고 각 native 결과를 별도 보존한다. 평가기별 설치 방법,
-입력 조건, 라이선스와 현재 검증 상태는
-[`stt-multi-engine-evaluation.md`](stt-multi-engine-evaluation.md)를 따른다.
-
-아직 구현하지 않은 항목:
+아직 자동 측정하거나 제공하지 않는 항목:
 
 - 여러 화자와 독립 검수 Gold를 갖춘 확정 비원어민 평가 세트
 - OpenAI 등 다른 STT 공급자의 실제 실행 adapter와 설정 비교 게이트
@@ -321,6 +280,5 @@ python -m app.stt_benchmark transcribe --manifest <manifest.json> --output <resu
 - 실제 API usage를 이용한 오디오 1분당 비용 집계
 - 여러 평가기 결과의 자동 비교·종합·순위·보고서(현재 요구 범위에서 의도적으로 제외)
 
-현재 CLI는 이미 저장한 모델 실행 결과를 평가하며 외부 API를 호출하거나 비용을
-발생시키지 않는다. 실행 방법은
-`backend/evals/transcription/README.md`에 기록되어 있다.
+`evaluate`와 `evaluate-engines`는 저장된 모델 답안을 평가하며 STT API를 호출하지
+않는다. `transcribe --execute-live`는 로컬 Whisper를 실행한다.

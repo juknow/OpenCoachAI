@@ -1,5 +1,10 @@
 # 멀티 엔진 Verbatim STT 평가 실행기
 
+이 문서는 독립 평가기의 구조, 입력 조건, 설치 및 원본 출력 계약을 설명한다. Gold와
+Prediction 파일을 배치하고 명령을 실행하는 절차는
+[`평가 자료 README`](../../backend/evals/transcription/README.md), 지표의 의미와 실험
+판단 기준은 [`STT 품질 평가 방법`](stt-evaluation.md)를 따른다.
+
 ## 1. 무엇을 해결하는가
 
 같은 시험 답안을 여러 채점기에 복사해 각각 채점한다고 생각하면 된다. 이 실행기는 이미
@@ -127,7 +132,7 @@ supplements가 없으면 평가 실행은 계속 가능하지만 `goldVersion`�
 Gold 내용이 바뀌면 이전 manifest를 덮어쓰지 말고 새 데이터셋 개정판과 새 평가
 실행 ID를 부여한다. 원음 파일 자체도 고정됐는지 파일 SHA-256으로 확인한다.
 
-## 6. 설치와 실행
+## 6. 설치와 실행 옵션
 
 기본 개발 환경과 평가 전용 의존성을 분리했다.
 
@@ -141,46 +146,26 @@ Windows에서는 MeetEval 항목이 환경 marker로 건너뛰어진다. SCTK와
 아니다. 공식 SCTK를 빌드·설치한 후 `--sctk-executable`로 `sclite`를 지정하고, Nyra는
 공식 저장소 checkout을 `--nyra-checkout`으로 지정한다.
 
-저장소의 공개 예시를 Custom과 JiWER로 실행하는 명령은 다음과 같다.
+공개 예시의 완전한 `app.stt_benchmark evaluate-engines` 명령은
+[`평가 자료 README`](../../backend/evals/transcription/README.md#여러-독립-평가기로-같은-답안-평가하기)에
+한 곳만 둔다. 추가 평가기를 선택할 때는 같은 명령에 다음 옵션을 사용한다.
 
-```powershell
-cd backend
-$evaluationRunId = "example-evaluation-$([guid]::NewGuid().ToString('N'))"
-.\.venv\Scripts\python.exe -m app.stt_benchmark evaluate-engines `
-  --manifest evals/transcription/manifest.example.json `
-  --run evals/transcription/run.example.json `
-  --output-dir evals/transcription/results `
-  --evaluation-run-id $evaluationRunId `
-  --evaluators custom,jiwer `
-  --max-concurrency 2
-```
-
-모든 등록 평가기를 시도하려면 `--evaluators all`을 사용한다. 설치되지 않았거나 입력이
-부족한 평가기는 실행 전체를 중단하지 않고 `unsupported`로 남는다.
-쓰기 권한이 제한된 실행 환경에서는 HF Evaluate의 계산 캐시를
-`--huggingface-cache-dir <writable-directory>`로 지정한다.
-
-```powershell
-.\.venv\Scripts\python.exe -m app.stt_benchmark evaluate-engines `
-  --manifest evals/transcription/manifest.local.json `
-  --run evals/transcription/results/small-en-001.json `
-  --supplements evals/transcription/supplements.local.json `
-  --output-dir evals/transcription/results `
-  --evaluation-run-id small-en-evaluation-001 `
-  --evaluators all `
-  --nyra-checkout C:\tools\nyra_verbatim_speech_benchmark `
-  --sctk-executable C:\tools\sctk\bin\sclite.exe
-```
+| 옵션 | 의미 |
+|---|---|
+| `--evaluators all` | 등록된 평가기를 모두 시도. 입력이나 설치가 부족하면 해당 결과를 `unsupported`로 기록 |
+| `--supplements <path>` | Gold 개정판·intended·화자·시간 등 선택 입력 전달 |
+| `--nyra-checkout <path>` | 공식 Nyra 저장소 checkout 지정 |
+| `--sctk-executable <path>` | 설치된 `sclite` 실행 파일 지정 |
+| `--huggingface-cache-dir <path>` | 쓰기 가능한 HF Evaluate 계산 캐시 위치 지정 |
+| `--max-concurrency <number>` | 동시 실행 상한 설정 |
 
 같은 Prediction을 재평가할 때는 새 `--evaluation-run-id`를 사용한다. 기존 폴더를
 덮어쓰지 않으며 같은 ID가 이미 있으면 실패한다.
 
 이미 받은 `gpt-transcribe` 응답을 가져오는 명령과 park·travel의 비공개 폴더 배치는
-[`평가 자료 README`](../../backend/evals/transcription/README.md)에 있다. API 응답
-자체에는 요청 모델·프롬프트·지연 시간·타임스탬프가 없을 수 있다. 가져오기 명령의
-모델명과 프롬프트 버전은 호출 기록을 확인해 사용자가 제공하는 값이며, 누락된
-지연 시간은 `null`로 남긴다. 이 값이 없어도 Custom/JiWER 등 텍스트 평가기는
-실행할 수 있지만 시간 지표를 임의로 생성하지 않는다.
+[`평가 자료 README`](../../backend/evals/transcription/README.md#이미-받은-openai-응답-가져오기)에
+있다. 가져온 응답에 없는 시간 정보는 생성하지 않으므로 시간 입력이 필요한 평가기는
+이를 지원 입력으로 취급하지 않는다.
 
 ## 7. 저장 결과
 
