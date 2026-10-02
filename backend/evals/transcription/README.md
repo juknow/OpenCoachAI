@@ -138,7 +138,7 @@ docker volume create opencoachai-whisper-cache
 $evalDir = (Resolve-Path -LiteralPath .\backend\evals\transcription).Path
 New-Item -ItemType Directory -Force .\backend\evals\transcription\results | Out-Null
 $runId = "small-en-$([guid]::NewGuid().ToString('N'))"
-$runOutput = "/evals/results/$runId.json"
+$runOutput = "/evals/results/predictions/$runId/run.json"
 docker run --rm --network none --mount "type=bind,source=$evalDir,target=/evals" --entrypoint python opencoachai-backend:local-whisper -m app.stt_benchmark transcribe --manifest /evals/manifest.local.json --output $runOutput --experiment-id $runId
 ```
 
@@ -157,7 +157,7 @@ docker run --rm --network none --mount "type=bind,source=$evalDir,target=/evals"
 실행 결과는 기존 채점 명령으로 분석한다.
 
 ```powershell
-$reportOutput = "/evals/results/$runId-report.json"
+$reportOutput = "/evals/results/evaluations/legacy-$runId/report.json"
 docker run --rm --network none --mount "type=bind,source=$evalDir,target=/evals" --entrypoint python opencoachai-backend:local-whisper -m app.stt_benchmark evaluate --manifest /evals/manifest.local.json --run $runOutput --output $reportOutput
 ```
 
