@@ -20,9 +20,11 @@ transcription/
 ├─ supplements.local.json  intended·화자·시간 정보, Git에서 제외
 ├─ samples/                평가 음성, Git에서 제외
 └─ results/                모델 전사·평가기 원본 결과, Git에서 제외
-   └─ predictions/<experiment-id>/
-      ├─ raw/              provider가 반환한 JSON 원본
-      └─ run.json          평가기에 넣을 기존 run 계약
+   ├─ gold-review/         Gold 사건 후보·검수 대기 작업지
+   ├─ predictions/<experiment-id>/
+   │  ├─ raw/              provider가 반환한 JSON 원본
+   │  └─ run.json          평가기에 넣을 기존 run 계약
+   └─ evaluations/         평가기 실행 색인과 원본 결과
 ```
 
 ## 시작 방법

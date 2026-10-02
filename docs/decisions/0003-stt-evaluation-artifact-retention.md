@@ -1,6 +1,6 @@
 # ADR 0003: STT 평가 산출물을 출처별로 보존하고 정리는 검증 후 승인한다
 
-- 상태: 평가 실행 폴더 6개와 Whisper run/report 파일 2개의 위치 이동 완료. 삭제와 보존 기간은 미승인
+- 상태: 평가 실행 폴더 6개, Whisper run/report, Gold 검수 작업지의 위치 이동 완료. 삭제와 보존 기간은 미승인
 - 날짜: 2026-09-27
 - 갱신: 2026-10-02
 
@@ -23,7 +23,7 @@ Git 커밋이나 이미지 재빌드만으로 이 자료를 복원할 수 없다
 
 | 분류 | 현재 파일 | 판단 |
 |---|---|---|
-| 원본·검수 근거 | `samples/`, `manifest.local.json`, `supplements.local.json`, `results/gold-event-candidates-001.json`, `results/gold-review-pending-001.json` | 다른 파일에서 안전하게 복원할 수 없으므로 임의 삭제·덮어쓰기 금지. Gold 개정 시 과거판을 별도 보존하는 절차가 필요하며 현재 자동 버전 관리는 없다. |
+| 원본·검수 근거 | `samples/`, `manifest.local.json`, `supplements.local.json`, `results/gold-review/gold-event-candidates-001.json`, `results/gold-review/gold-review-pending-001.json` | 다른 파일에서 안전하게 복원할 수 없으므로 임의 삭제·덮어쓰기 금지. Gold 개정 시 과거판을 별도 보존하는 절차가 필요하며 현재 자동 버전 관리는 없다. 작업지의 manifest·audio 상대 경로는 이 폴더에서 해석되도록 갱신했다. |
 | 모델 출력 원본 | `results/predictions/*/raw/`, `results/predictions/small-en-001/run.json` | 재호출은 비용·모델 변경·비결정성 때문에 같은 답안을 보장하지 않으므로 원본 보존. |
 | 평가 입력 사본 | `results/predictions/*/run.json` | 원본 응답과 별개로 평가기가 사용한 정확한 Prediction을 고정한다. 원본 경로·해시를 확인한 뒤 보존. |
 | 채점 이력 | `results/evaluations/<evaluation-run-id>/index.json`과 각 `raw/`, `results/evaluations/legacy-small-en-001/report.json` | 점수 파일이 같아도 실행 조건과 검수 상태가 다를 수 있다. 인용하거나 재현 근거로 사용한 실행은 보존. |
@@ -70,9 +70,10 @@ Git 커밋이나 이미지 재빌드만으로 이 자료를 복원할 수 없다
 
 ## 영향·한계·재검토 조건
 
-- 평가 실행 폴더 여섯 개와 Whisper run/report 파일 두 개의 위치만 바뀌었다.
-  Gold 작업지와 OpenAI prediction 묶음은 참조를 유지하기 위해 기존 위치에 두었다.
-  다른 파일의 삭제나 보존 기간을 자동 설정하는 구현은 아니다.
+- 평가 실행 폴더 여섯 개, Whisper run/report 두 파일, Gold 작업지 두 파일의 위치가
+  정리되었다. Gold 작업지의 상대 manifest·audio 경로도 새 폴더 기준으로 갱신했다.
+  OpenAI prediction 묶음은 기존 참조가 유효해 그대로 두었다. 삭제나 보존 기간을
+  자동 설정하는 구현은 아니다.
 - 저장소만 조사했으므로 저장소 밖의 동의 문서·백업·접근 권한은 확인되지 않았다.
 - 협업 서버로 자료를 옮기거나, 보존 만료일·삭제 요청이 생기거나, 자료가 커져
   실제 정리가 필요해지면 동의 조건과 복구 수단을 확인한 뒤 이 결정을 갱신한다.
