@@ -89,11 +89,13 @@ async def test_execute_dataset_reuses_service_and_produces_existing_run_contract
         experiment_id="local-small-001",
         model_name="small.en",
         max_audio_bytes=5_000_000,
+        beam_size=50,
     )
 
     assert provider.calls == 1
     assert run.model == "local-whisper/small.en"
     assert run.config.max_audio_bytes == 5_000_000
+    assert run.config.beam_size == 50
     assert run.observations[0].transcript == "Um, I I went there."
     assert run.observations[0].audio_seconds == 4.25
     assert run.observations[1].status == "rejected"
@@ -124,5 +126,19 @@ def test_dry_run_rejects_invalid_experiment_id_before_running(tmp_path: Path) ->
                 "--output", str(manifest_path.parent / "results" / "run.json"),
                 "--experiment-id", "Invalid ID",
                 "--execute-live",
+            ]
+        )
+
+
+def test_dry_run_rejects_nonpositive_beam_size(tmp_path: Path) -> None:
+    manifest_path, _dataset = sample_files(tmp_path)
+
+    with pytest.raises(SystemExit, match="2"):
+        main(
+            [
+                "--manifest", str(manifest_path),
+                "--output", str(manifest_path.parent / "results" / "run.json"),
+                "--experiment-id", "local-small-001",
+                "--beam-size", "0",
             ]
         )

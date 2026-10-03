@@ -45,6 +45,7 @@ async def execute_dataset(
     experiment_id: str,
     model_name: str,
     max_audio_bytes: int,
+    beam_size: int | None = None,
 ) -> TranscriptionRun:
     processor = TranscriptionProcessor(
         provider=provider,
@@ -100,6 +101,9 @@ async def execute_dataset(
         model=f"local-whisper/{model_name}",
         prompt_version="no-prompt-v1",
         created_at=datetime.now(UTC),
-        config=TranscriptionRunConfig(max_audio_bytes=max_audio_bytes),
+        config=TranscriptionRunConfig(
+            max_audio_bytes=max_audio_bytes,
+            beam_size=beam_size,
+        ),
         observations=observations,
     )

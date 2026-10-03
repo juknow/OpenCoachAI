@@ -23,6 +23,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--experiment-id", required=True)
     parser.add_argument("--model", default="small.en")
+    parser.add_argument("--beam-size", type=int)
     parser.add_argument("--max-audio-bytes", type=int, default=DEFAULT_MAX_AUDIO_BYTES)
     parser.add_argument("--execute-live", action="store_true")
     return parser
@@ -42,6 +43,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         parser.error("--max-audio-bytes must be between 1024 and 25000000")
     if not arguments.model.strip():
         parser.error("--model must not be empty")
+    if arguments.beam_size is not None and arguments.beam_size < 1:
+        parser.error("--beam-size must be at least 1")
     if len(f"local-whisper/{arguments.model}") > 160:
         parser.error("--model is too long for the run JSON contract")
     if (
@@ -73,6 +76,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     provider = LocalWhisperTranscriptionProvider(
         model_loader=lambda: load_local_whisper_model(arguments.model),
         model_name=arguments.model,
+        beam_size=arguments.beam_size,
     )
     run = asyncio.run(
         execute_dataset(
@@ -82,6 +86,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             experiment_id=arguments.experiment_id,
             model_name=arguments.model,
             max_audio_bytes=arguments.max_audio_bytes,
+            beam_size=arguments.beam_size,
         )
     )
     output_path.parent.mkdir(parents=True, exist_ok=True)

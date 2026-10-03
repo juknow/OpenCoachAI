@@ -9,6 +9,7 @@ from app.schemas.common import ApiModel, UsageMetadata
 class TranscriptionRunConfig(ApiModel):
     language: Literal["en"] = "en"
     chunking: Literal["none", "auto"] = "none"
+    beam_size: int | None = Field(default=None, ge=1)
     temperature: float | None = Field(default=None, ge=0, le=1)
     include_logprobs: bool = False
     prompt_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")

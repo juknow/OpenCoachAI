@@ -148,9 +148,26 @@ docker run --rm --network none --mount "type=bind,source=$evalDir,target=/evals"
 덮어쓰지 않는다. 위 검증 명령은 파일을 쓰지 않으므로 바로 아래 실제 실행에서
 같은 `$runId`를 재사용한다. 다음 반복 측정에는 새 `$runId`를 만든다.
 
+후보 탐색 폭을 비교할 때만 `--beam-size 50`처럼 값을 지정한다. 이 옵션을 생략하면
+설치된 `faster-whisper`의 기본값을 그대로 사용한다. 현재 사용 중인 1.2.1 버전의
+기본값은 5다. 명시한 값은 결과 JSON의 `config.beamSize`에 기록되며, 이전 결과는
+이 필드 없이도 읽을 수 있다. 높은 값이 정확도를 보장하지 않으므로 동일한 음성의
+기준선과 JiWER 오류 수를 비교하기 전에는 제품 설정에 적용하지 않는다.
+
 ```powershell
 docker run --rm --network none --mount "type=bind,source=$evalDir,target=/evals" --mount source=opencoachai-whisper-cache,target=/home/appuser/.cache/huggingface --entrypoint python opencoachai-backend:local-whisper -m app.stt_benchmark transcribe --manifest /evals/manifest.local.json --output $runOutput --experiment-id $runId --execute-live
 ```
+
+이미 만들어 둔 Docker 이미지에 현재 연구 CLI 코드가 없다면, 저장소 루트에서
+`$appDir = (Resolve-Path -LiteralPath .\backend\app).Path`를 설정하고 위 `docker run`에
+`--mount "type=bind,source=$appDir,target=/app/app,readonly"`를 추가한다. 이 마운트는
+코드만 읽으며 평가 음성은 이미지에 복사하지 않는다.
+
+2026-10-03 실험에서는 기존 이미지의 PyAV 18.1.0과 위 코드 마운트를 사용했다.
+같은 날 새로 빌드한 이미지가 설치한 PyAV 19.0.0에서는 오디오 디코딩 전에
+`metadata_errors` 인자 오류로 두 전사가 실패했다. 새 이미지를 빌드해 재현할 때는
+이 의존성 호환성을 먼저 해결해야 한다. 실패한 `-001` 기록은 성공한 `-002`와
+구분해 보존한다.
 
 다른 컴퓨터에서는 저장소 코드와 별도로 `manifest.local.json`, `samples/`, `results/`를
 안전하게 옮기고 위 명령을 다시 실행한다. 모델 캐시 볼륨은 새 컴퓨터에서 다시 준비해도
@@ -220,6 +237,28 @@ $evaluationRunId = "example-evaluation-$([guid]::NewGuid().ToString('N'))"
 새 실행의 색인 v2에는 정규화 전 Gold·Prediction의 UTF-8 SHA-256과 Gold 개정판 출처가
 함께 기록된다. 해시가 같으면 채점한 텍스트 값이 같았다는 근거가 되지만, 사람이 원음을
 듣고 정답을 검수했다는 증거는 아니다.
+
+### 2026-10-03 `small.en` 후보 탐색 폭 개인 파일럿
+
+동일한 park·travel 음성 두 개(정답 264단어)에 CPU `int8`, 영어 지정, VAD 끔을
+유지하고 `beam_size`만 기본값 5에서 50으로 바꿨다. JiWER 원본은 기존의
+`verbatim-whitespace-v1` 프로필로 보존했다. 아래 수치는 같은 JiWER 라이브러리로
+양쪽에 `ToLowerCase`, `RemovePunctuation`, `RemoveMultipleSpaces`, `Strip`,
+`ReduceToListOfListOfWords`를 적용해 다시 계산한 micro WER다.
+
+| `beam_size` | 정규화 WER | 저장된 원본 JiWER WER | 정규화 치환 | 삭제 | 삽입 | park / travel 전사 시간 |
+|---:|---:|---:|---:|---:|---:|---|
+| 5 (기본값) | 18.2% | 37.9% | 6 | 41 | 1 | 14.7초 / 15.8초 |
+| 50 | 14.4% | 42.4% | 7 | 30 | 1 | 27.8초 / 34.7초 |
+
+기준선은 로컬 실행 ID `whisper-small-en-cpu-int8-20261003-002`, 후보는
+`whisper-small-en-beam50-cpu-int8-20261003-001`이다. 대응하는 JiWER 평가 폴더는
+각각 `jiwer-small-en-cpu-int8-20261003-002`와
+`jiwer-small-en-beam50-cpu-int8-20261003-001`이다. 두 음성 모두 전사와 JiWER 평가에 성공했다.
+삭제는 11개 줄었지만 치환은 1개 늘고 시간은 길어졌다. 자료가 두 개이고
+`single-reviewed`이므로 이 결과만으로 제품 기본값을 바꾸지 않는다. 저장된 원본
+JiWER WER는 대소문자·문장부호도 치환으로 세기 때문에 반대 방향으로 움직였다.
+구어체 단어 보존을 판단할 때는 두 점수의 정규화 차이를 명시하고 원음을 다시 확인해야 한다.
 
 ## 로컬 산출물 보존과 정리
 

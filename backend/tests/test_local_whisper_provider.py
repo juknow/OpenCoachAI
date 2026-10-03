@@ -55,3 +55,28 @@ async def test_local_whisper_adapts_audio_without_rewriting_spoken_text() -> Non
     assert result.audio_seconds == 4.25
     assert result.usage is None
     assert result.token_logprobs == ()
+
+
+@pytest.mark.asyncio
+async def test_local_whisper_passes_explicit_beam_size_without_changing_text() -> None:
+    model = FakeWhisperModel()
+    provider = LocalWhisperTranscriptionProvider(
+        model_loader=lambda: model,
+        model_name="small.en",
+        beam_size=50,
+    )
+
+    result = await provider.transcribe(
+        audio=b"recorded audio",
+        filename="answer.webm",
+        mime_type="audio/webm",
+        prompt="",
+    )
+
+    assert model.kwargs == {
+        "language": "en",
+        "task": "transcribe",
+        "vad_filter": False,
+        "beam_size": 50,
+    }
+    assert result.text == " Um, I I went there."
